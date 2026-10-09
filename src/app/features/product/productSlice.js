@@ -1,0 +1,323 @@
+import { createSlice } from "@reduxjs/toolkit";
+
+const initialState = {
+    value: [
+  {
+    id: 1,
+    ref: "LUC-01",
+    name: "Sunseeker Yellow",
+    legacyName: "Sunseeker Yellow",
+    subtitle: "Lucent Collection",
+    detail: "Lucent Collection",
+    link: "/product-details",
+    collection: "lucent",
+    range: "automatic",
+    type: "automatic",
+    material: "titanium",
+    color: "yellow",
+    image: "/images/watch-1.png",
+    mainImage: "/images/watch-1.png",
+    accent: "#FACC15",
+    limited: false,
+    price: 499,
+    edition: null,
+    quantity: 1,
+    pdpSubtitle: "LUC-01 • Automatic Collection",
+    tagline: "Engineered for Everyday Adventure",
+    pdpPrice: 3200,
+    description: [
+      { text: "The ", bold: "Sunseeker Yellow", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
+      { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Sunseeker Yellow balances bold aesthetics with everyday practicality." },
+      { text: "Distinctive, versatile, and unmistakably Valour—", bold: "Sunseeker Yellow is made for those who move forward with confidence." }
+    ],
+    thumbnails: [
+      { id: 1, img: "/images/watch-1.png" },
+      { id: 2, img: "/images/watch-2.png" },
+      { id: 3, img: "/images/watch-3.png" },
+      { id: 4, img: "/images/watch-4.png" },
+      { id: 5, img: "/images/watch-5.png" },
+      { id: 6, img: "/images/watch-6.png" }
+    ],
+    editions: ["P-01", "P-02", "P-03", "P-04", "P-05"],
+    specs: [
+      { label: "Case Material", value: "Titanium" },
+      { label: "Case Diameter", value: "40mm" },
+      { label: "Case Thickness", value: "11.2mm" },
+      { label: "Movement", value: "Automatic Mechanical" },
+      { label: "Power Reserve", value: "72 Hours" },
+      { label: "Water Resistance", value: "100m / 10 ATM" },
+      { label: "Strap Material", value: "Premium Textile Strap" },
+      { label: "Crystal", value: "Scratch-Resistant Sapphire" },
+      { label: "Dial Finish", value: "Sunburst Yellow" },
+      { label: "Weight", value: "78g" },
+      { label: "Warranty", value: "5 Years International" }
+    ]
+  },
+  {
+    id: 2,
+    ref: "LUC-06",
+    name: "Astral Blue",
+    legacyName: "Midnight Blue",
+    subtitle: "Lucent Collection",
+    detail: "Lucent Collection",
+    link: "/product-details",
+    collection: "lucent",
+    range: "automatic",
+    type: "automatic",
+    material: "titanium",
+    color: "blue",
+    image: "/images/watch-2.png",
+    mainImage: "/images/watch-2.png",
+    accent: "#3B82F6",
+    limited: false,
+    price: 499,
+    edition: null,
+    quantity: 1,
+    pdpSubtitle: "LUC-06 • Automatic Collection",
+    tagline: "Engineered for Everyday Adventure",
+    pdpPrice: 3200,
+    description: [
+      { text: "The ", bold: "Astral Blue", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
+      { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Astral Blue balances bold aesthetics with everyday practicality." },
+      { text: "Distinctive, versatile, and unmistakably Valour—", bold: "Astral Blue is made for those who move forward with confidence." }
+    ],
+    thumbnails: [
+      { id: 1, img: "/images/watch-1.png" },
+      { id: 2, img: "/images/watch-2.png" },
+      { id: 3, img: "/images/watch-3.png" },
+      { id: 4, img: "/images/watch-4.png" },
+      { id: 5, img: "/images/watch-5.png" },
+      { id: 6, img: "/images/watch-6.png" }
+    ],
+    editions: ["P-01", "P-02", "P-03", "P-04", "P-05"],
+    specs: [
+      { label: "Case Material", value: "Titanium" },
+      { label: "Case Diameter", value: "40mm" },
+      { label: "Case Thickness", value: "11.2mm" },
+      { label: "Movement", value: "Automatic Mechanical" },
+      { label: "Power Reserve", value: "72 Hours" },
+      { label: "Water Resistance", value: "100m / 10 ATM" },
+      { label: "Strap Material", value: "Premium Textile Strap" },
+      { label: "Crystal", value: "Scratch-Resistant Sapphire" },
+      { label: "Dial Finish", value: "Sunburst Blue" },
+      { label: "Weight", value: "78g" },
+      { label: "Warranty", value: "5 Years International" }
+    ]
+  },
+  {
+    id: 3,
+    ref: "LUC-05",
+    name: "Aurora Mint",
+    legacyName: "Forest Green",
+    subtitle: "Lucent Collection",
+    detail: "Lucent Collection",
+    link: "/product-details",
+    collection: "lucent",
+    range: "automatic",
+    type: "automatic",
+    material: "titanium",
+    color: "mint",
+    image: "/images/watch-3.png",
+    mainImage: "/images/watch-3.png",
+    accent: "#10B981",
+    limited: false,
+    price: 499,
+    edition: null,
+    quantity: 1,
+    pdpSubtitle: "LUC-05 • Automatic Collection",
+    tagline: "Engineered for Everyday Adventure",
+    pdpPrice: 3200,
+    description: [
+      { text: "The ", bold: "Aurora Mint", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
+      { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Aurora Mint balances bold aesthetics with everyday practicality." },
+      { text: "Distinctive, versatile, and unmistakably Valour—", bold: "Aurora Mint is made for those who move forward with confidence." }
+    ],
+    thumbnails: [
+      { id: 1, img: "/images/watch-1.png" },
+      { id: 2, img: "/images/watch-2.png" },
+      { id: 3, img: "/images/watch-3.png" },
+      { id: 4, img: "/images/watch-4.png" },
+      { id: 5, img: "/images/watch-5.png" },
+      { id: 6, img: "/images/watch-6.png" }
+    ],
+    editions: ["P-01", "P-02", "P-03", "P-04", "P-05"],
+    specs: [
+      { label: "Case Material", value: "Titanium" },
+      { label: "Case Diameter", value: "40mm" },
+      { label: "Case Thickness", value: "11.2mm" },
+      { label: "Movement", value: "Automatic Mechanical" },
+      { label: "Power Reserve", value: "72 Hours" },
+      { label: "Water Resistance", value: "100m / 10 ATM" },
+      { label: "Strap Material", value: "Premium Textile Strap" },
+      { label: "Crystal", value: "Scratch-Resistant Sapphire" },
+      { label: "Dial Finish", value: "Sunburst Mint" },
+      { label: "Weight", value: "78g" },
+      { label: "Warranty", value: "5 Years International" }
+    ]
+  },
+  {
+    id: 4,
+    ref: "LUC-02",
+    name: "Nova Red",
+    legacyName: "Nova Red",
+    subtitle: "Lucent Collection",
+    detail: "Lucent Collection",
+    link: "/product-details",
+    collection: "lucent",
+    range: "automatic",
+    type: "automatic",
+    material: "titanium",
+    color: "red",
+    image: "/images/watch-4.png",
+    mainImage: "/images/watch-4.png",
+    accent: "#EF4444",
+    limited: false,
+    price: 499,
+    edition: null,
+    quantity: 1,
+    pdpSubtitle: "LUC-02 • Automatic Collection",
+    tagline: "Engineered for Everyday Adventure",
+    pdpPrice: 3200,
+    description: [
+      { text: "The ", bold: "Nova Red", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
+      { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Nova Red balances bold aesthetics with everyday practicality." },
+      { text: "Distinctive, versatile, and unmistakably Valour—", bold: "Nova Red is made for those who move forward with confidence." }
+    ],
+    thumbnails: [
+      { id: 1, img: "/images/watch-1.png" },
+      { id: 2, img: "/images/watch-2.png" },
+      { id: 3, img: "/images/watch-3.png" },
+      { id: 4, img: "/images/watch-4.png" },
+      { id: 5, img: "/images/watch-5.png" },
+      { id: 6, img: "/images/watch-6.png" }
+    ],
+    editions: ["P-01", "P-02", "P-03", "P-04", "P-05"],
+    specs: [
+      { label: "Case Material", value: "Titanium" },
+      { label: "Case Diameter", value: "40mm" },
+      { label: "Case Thickness", value: "11.2mm" },
+      { label: "Movement", value: "Automatic Mechanical" },
+      { label: "Power Reserve", value: "72 Hours" },
+      { label: "Water Resistance", value: "100m / 10 ATM" },
+      { label: "Strap Material", value: "Premium Textile Strap" },
+      { label: "Crystal", value: "Scratch-Resistant Sapphire" },
+      { label: "Dial Finish", value: "Sunburst Red" },
+      { label: "Weight", value: "78g" },
+      { label: "Warranty", value: "5 Years International" }
+    ]
+  },
+  {
+    id: 5,
+    ref: "LUC-03",
+    name: "Frost Silver",
+    legacyName: "Frost Silver",
+    subtitle: "Lucent Collection",
+    detail: "Lucent Collection",
+    link: "/product-details",
+    collection: "lucent",
+    range: "automatic",
+    type: "automatic",
+    material: "titanium",
+    color: "silver",
+    image: "/images/watch-5.png",
+    mainImage: "/images/watch-5.png",
+    accent: "#D1D5DB",
+    limited: false,
+    price: 499,
+    edition: null,
+    quantity: 1,
+    pdpSubtitle: "LUC-03 • Automatic Collection",
+    tagline: "Engineered for Everyday Adventure",
+    pdpPrice: 3200,
+    description: [
+      { text: "The ", bold: "Frost Silver", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
+      { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Frost Silver balances bold aesthetics with everyday practicality." },
+      { text: "Distinctive, versatile, and unmistakably Valour—", bold: "Frost Silver is made for those who move forward with confidence." }
+    ],
+    thumbnails: [
+      { id: 1, img: "/images/watch-1.png" },
+      { id: 2, img: "/images/watch-2.png" },
+      { id: 3, img: "/images/watch-3.png" },
+      { id: 4, img: "/images/watch-4.png" },
+      { id: 5, img: "/images/watch-5.png" },
+      { id: 6, img: "/images/watch-6.png" }
+    ],
+    editions: ["P-01", "P-02", "P-03", "P-04", "P-05"],
+    specs: [
+      { label: "Case Material", value: "Titanium" },
+      { label: "Case Diameter", value: "40mm" },
+      { label: "Case Thickness", value: "11.2mm" },
+      { label: "Movement", value: "Automatic Mechanical" },
+      { label: "Power Reserve", value: "72 Hours" },
+      { label: "Water Resistance", value: "100m / 10 ATM" },
+      { label: "Strap Material", value: "Premium Textile Strap" },
+      { label: "Crystal", value: "Scratch-Resistant Sapphire" },
+      { label: "Dial Finish", value: "Sunburst Silver" },
+      { label: "Weight", value: "78g" },
+      { label: "Warranty", value: "5 Years International" }
+    ]
+  },
+  {
+    id: 6,
+    ref: "LUC-04",
+    name: "Eclipse Black",
+    legacyName: "Eclipse Black",
+    subtitle: "Lucent Collection",
+    detail: "Lucent Collection",
+    link: "/product-details",
+    collection: "lucent",
+    range: "automatic",
+    type: "automatic",
+    material: "titanium",
+    color: "black",
+    image: "/images/watch-6.png",
+    mainImage: "/images/watch-6.png",
+    accent: "#111827",
+    limited: false,
+    price: 499,
+    edition: null,
+    quantity: 1,
+    pdpSubtitle: "LUC-04 • Automatic Collection",
+    tagline: "Engineered for Everyday Adventure",
+    pdpPrice: 3200,
+    description: [
+      { text: "The ", bold: "Eclipse Black", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
+      { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Eclipse Black balances bold aesthetics with everyday practicality." },
+      { text: "Distinctive, versatile, and unmistakably Valour—", bold: "Eclipse Black is made for those who move forward with confidence." }
+    ],
+    thumbnails: [
+      { id: 1, img: "/images/watch-1.png" },
+      { id: 2, img: "/images/watch-2.png" },
+      { id: 3, img: "/images/watch-3.png" },
+      { id: 4, img: "/images/watch-4.png" },
+      { id: 5, img: "/images/watch-5.png" },
+      { id: 6, img: "/images/watch-6.png" }
+    ],
+    editions: ["P-01", "P-02", "P-03", "P-04", "P-05"],
+    specs: [
+      { label: "Case Material", value: "Titanium" },
+      { label: "Case Diameter", value: "40mm" },
+      { label: "Case Thickness", value: "11.2mm" },
+      { label: "Movement", value: "Automatic Mechanical" },
+      { label: "Power Reserve", value: "72 Hours" },
+      { label: "Water Resistance", value: "100m / 10 ATM" },
+      { label: "Strap Material", value: "Premium Textile Strap" },
+      { label: "Crystal", value: "Scratch-Resistant Sapphire" },
+      { label: "Dial Finish", value: "Sunburst Black" },
+      { label: "Weight", value: "78g" },
+      { label: "Warranty", value: "5 Years International" }
+    ]
+  }
+],
+}
+
+export const productSlice = createSlice({
+    name: "productSlice",
+    initialState,
+    reducers: {
+        //your logic
+    }
+})
+
+export const {} = productSlice.actions;
+export default productSlice.reducer;

@@ -1,0 +1,334 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+html,
+body {
+    height: 100%;
+    overflow: auto !important;
+}
+
+
+/* ////////pro-page////////// */
+
+:root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #111111;
+    --bg-tertiary: #1a1a1a;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --text-muted: #666666;
+    --accent-gold: #d4a843;
+    --accent-gold-hover: #c49a3a;
+    --accent-purple: #7c3aed;
+    --border-color: #2a2a2a;
+    --border-light: #333333;
+}
+
+.product-page {
+    padding: 8% 0 4%;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.thumbnail-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-right: 1rem;
+}
+
+.thumbnail-item {
+    width: 70px;
+    height: 70px;
+    overflow: hidden;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    background: var(--bg-secondary);
+    position: relative;
+}
+
+.thumbnail-item:hover {
+    border-color: var(--border-light);
+    transform: translateY(-2px);
+}
+
+.thumbnail-item.active {
+    border-color: var(--text-primary);
+}
+
+.thumbnail-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+
+.thumbnail-item.active img,
+.thumbnail-item:hover img {
+    opacity: 1;
+}
+
+.main-image-container {
+    position: relative;
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    overflow: hidden;
+    aspect-ratio: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.main-image-container img {
+    width: 70%;
+    transition: transform 0.4s ease;
+    display: block;
+    margin: 0 auto;
+}
+
+.main-image-container a {
+    width: 100%;
+}
+
+.product-title {
+    color: #fff;
+    margin-bottom: 26px;
+    font-size: 45px;
+    font-weight: 700;
+    font-family: Times New Roman, Times, serif;
+}
+
+.tagline {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.02em;
+    font-family: "poppins";
+}
+
+.description-block {
+    color: #fff;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+}
+
+.description-block .highlight {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+
+.edition-section {
+    margin-bottom: 1.5rem;
+}
+
+.edition-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.edition-label span {
+    color: var(--text-primary);
+    font-weight: 600; 
+}
+
+.edition-select {
+    width: 100%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 1rem 1.25rem;
+    border-radius: 10px;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    transition: border-color 0.2s;
+}
+
+.edition-select:hover,
+.edition-select:focus {
+    border-color: var(--border-light);
+    outline: none;
+}
+
+.add-to-cart-btn {
+    width: 100%;
+    color: #fff;
+    border: 1px solid #fff;
+    background: #000;
+    padding: 1.125rem 2rem;
+    border-radius: 15px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    text-decoration: none;
+}
+
+.add-to-cart-btn:hover {
+    background: #fff;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(256, 256, 256, 0.3);
+    color: #000;
+}
+
+.add-to-cart-btn:active {
+    transform: translateY(0);
+}
+
+.btn-price {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.btn-divider {
+    width: 1px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    margin: 0 1rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 991.98px) {
+    .product-title {
+        font-size: 1.875rem;
+    }
+
+    .thumbnail-sidebar {
+        flex-direction: row;
+        overflow-x: auto;
+        padding-right: 0;
+        padding-bottom: 1rem;
+        gap: 0.5rem;
+    }
+
+    .thumbnail-item {
+        width: 48px;
+        height: 48px;
+        flex-shrink: 0;
+    }
+
+    .main-image-container {
+        aspect-ratio: 1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .product-title {
+        font-size: 1.5rem;
+    }
+
+    .add-to-cart-btn {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        border-radius: 0;
+        z-index: 1000;
+        padding: 1.25rem 1.5rem;
+    }
+
+    .mobile-spacer {
+        height: 80px;
+    }
+}
+
+/* Custom scrollbar for thumbnails */
+.thumbnail-sidebar::-webkit-scrollbar {
+    height: 4px;
+}
+
+.thumbnail-sidebar::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.thumbnail-sidebar::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: 2px;
+}
+
+/* Animation for specs */
+.chevron-icon {
+    border-radius: 100%;
+    transition: all 0.3s ease;
+}
+
+.chevron-icon.rotate {
+    transform: rotate(180deg);
+}
+
+/* Loading skeleton */
+.skeleton {
+    background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 50%, var(--bg-secondary) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+
+
+
+.product-description-section {
+    background-color: #0a0a0a;
+    color: #ffffff;
+    padding: 4rem 0;
+}
+
+.description-text {
+    font-size: 1.125rem;
+    line-height: 1.8;
+    color: #a0a0a0;
+    margin-bottom: 2rem;
+}
+
+.specs-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.specs-table thead th {
+    text-align: left;
+    padding: 1rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #ffffff;
+    width: 50%;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.specs-table tbody td {
+    padding: 0.875rem 0;
+    font-size: 0.9375rem;
+    width: 50%;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.specs-table tbody td:first-child {
+    color: #a0a0a0;
+}
+
+.specs-table tbody td:last-child {
+    color: #ffffff;
+    font-weight: 500;
+}

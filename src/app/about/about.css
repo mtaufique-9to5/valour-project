@@ -1,0 +1,159 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+html,
+body {
+    height: 100%;
+    overflow: auto !important;
+}
+
+.about-sec {
+    padding: 11% 0 4%;
+    height: 100vh;
+    position: relative;
+}
+
+.about-sub {
+    display: inline-block;
+    margin-bottom: 30px;
+    font-size: 20px;
+    color: #fff;
+    font-family: Poppins, sans-serif;
+    font-weight: 300;
+    text-transform: uppercase;
+}
+
+.about-hd {
+    color: #fff;
+    margin-bottom: 26px;
+    font-size: 75px;
+    font-family: Times New Roman, Times, serif;
+}
+
+.about-sec p {
+    color: #fff;
+    margin-bottom: 15px;
+    font-family: Poppins, sans-serif;
+    font-size: 18px;
+    font-weight: 200;
+    line-height: 2;
+}
+
+.about-sec .abt-img {
+    position: absolute;
+    bottom: 0;
+    right: 100px;
+    width: 60%;
+    opacity: .8;
+}
+
+
+
+/* ///////////Authors/////////// */
+.authors-sec {
+    padding: 11% 0 4%;
+    height: 100%;
+    position: relative;
+}
+
+.authors-sec .row {
+    align-items: center;
+}
+
+.authors-sec .container {}
+
+.authors-sub {
+    display: inline-block;
+    margin-bottom: 30px;
+    font-size: 20px;
+    color: #fff;
+    font-family: Poppins, sans-serif;
+    font-weight: 300;
+    text-transform: uppercase;
+}
+
+.authors-hd {
+    color: #fff;
+    margin-bottom: 26px;
+    letter-spacing: -1px;
+    font-size: 61px;
+    font-family: Times New Roman, Times, serif;
+}
+
+.authors-sec p {
+    color: #fff;
+    margin-bottom: 15px;
+    font-family: Poppins, sans-serif;
+    font-size: 18px;
+    font-weight: 200;
+    line-height: 2;
+}
+
+.authors-sec .author-img {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    margin: auto 0;
+    right: 0;
+    width: 25%;
+}
+
+
+
+/* //////////////belief-sec////////// */
+.belief-sec {
+    height: 100vh;
+    background: #00000094 url("/images/belief-bg.webp");
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+    background-blend-mode: overlay;
+}
+
+.belief-sec .container {
+    height: 100%;
+}
+
+.belief-sec .row {
+    align-items: center;
+    height: 100%;
+}
+
+.belief-sub {
+    margin-bottom: 30px;
+    font-size: 20px;
+    color: #fff;
+    font-family: Poppins, sans-serif;
+    font-weight: 300;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.belief-hd {
+    color: #fff;
+    margin-bottom: 26px;
+    font-size: 95px;
+    font-family: Times New Roman, Times, serif;
+    text-align: center;
+}
+
+.belief-sec p {
+    color: #fff;
+    margin-bottom: 15px;
+    font-family: Poppins, sans-serif;
+    font-size: 18px;
+    font-weight: 200;
+    line-height: 2;
+    text-align: center;
+}
+
+.belief-sec .text-sec {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.belief-btn {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+    margin-top: 30px;
+}

@@ -1,0 +1,227 @@
+html,
+body {
+    height: 100%;
+    overflow: auto !important;
+}
+
+
+.valour-blog {
+    background-color: #0a0a0a;
+    color: #f5f5f5;
+    font-family: 'Jost', sans-serif;
+    overflow: hidden;
+}
+
+/* ===== SIMPLE BANNER ===== */
+.blog-banner {
+    padding: 6% 0 1%;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+
+.banner-title {
+    font-family: 'Playfair Display', serif;
+    font-weight: 500;
+    font-size: 46px;
+    color: #f5f5f5;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+/* ===== GRID SECTION ===== */
+.blog-grid-section {
+    padding: 2% 0 4%;
+}
+
+.blog-card {
+    border-radius: 25px;
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.45s ease, transform 0.45s ease, box-shadow 0.45s ease;
+    position: relative;
+}
+
+.blog-card:hover {
+    border-color: rgba(256, 256, 256, 0.45);
+    transform: translateY(-8px);
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+}
+
+.card-img-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+}
+
+.card-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: grayscale(10%) brightness(0.82);
+    transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1), filter 0.6s ease;
+}
+
+.blog-card:hover .card-img-wrap img {
+    transform: scale(1.08);
+    filter: grayscale(0%) brightness(0.95);
+}
+
+.img-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.1) 55%, transparent 100%);
+    pointer-events: none;
+}
+
+.category-tag {
+    border-radius: 12px;
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    border: 1px solid rgba(256, 256, 256, 0.7);
+    color: #fff;
+    font-size: 10.5px;
+    letter-spacing: 2px;
+    padding: 6px 12px;
+    background: rgba(10, 10, 10, 0.4);
+    backdrop-filter: blur(3px);
+    z-index: 2;
+}
+
+.bottom-rule {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #fff 50%, transparent);
+    opacity: 0;
+    transition: opacity 0.45s ease;
+    z-index: 2;
+}
+
+.blog-card:hover .bottom-rule {
+    opacity: 1;
+}
+
+.card-body {
+    padding: 32px 30px 36px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.card-meta {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: #fff;
+    margin-bottom: 16px;
+}
+
+.meta-dot {
+    color: #fff;
+}
+
+.card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 23px;
+    font-weight: 500;
+    color: #f0f0f0;
+    line-height: 1.32;
+    margin-bottom: 18px;
+}
+
+.title-divider {
+    display: block;
+    width: 36px;
+    height: 1px;
+    background: #fff;
+    margin-bottom: 18px;
+    transition: width 0.45s ease;
+}
+
+.blog-card:hover .title-divider {
+    width: 60px;
+}
+
+.card-excerpt {
+    font-size: 14px;
+    color: #fff;
+    line-height: 1.75;
+    margin-bottom: 26px;
+    flex-grow: 1;
+}
+
+.read-more {
+    font-size: 11.5px;
+    letter-spacing: 2px;
+    color: #f0f0f0;
+    text-decoration: none;
+    display: inline-block;
+    width: fit-content;
+    border-bottom: 1px solid #fff;
+    padding-bottom: 7px;
+    transition: color 0.3s ease, letter-spacing 0.3s ease;
+}
+
+.read-more:hover {
+    color: #d98c8c;
+    letter-spacing: 2.6px;
+}
+
+.load-more-wrap {
+    margin-top: 80px;
+}
+
+.load-more-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #f5f5f5;
+    padding: 16px 48px;
+    font-size: 12px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    font-family: 'Jost', sans-serif;
+    transition: background 0.4s ease, border-color 0.4s ease, letter-spacing 0.4s ease;
+    cursor: pointer;
+}
+
+.load-more-btn:hover {
+    background: #b03a3a;
+    border-color: #b03a3a;
+    letter-spacing: 3px;
+}
+
+@media (max-width: 768px) {
+    .blog-banner {
+        padding: 70px 0 50px;
+    }
+
+    .banner-title {
+        font-size: 32px;
+    }
+
+    .blog-grid-section {
+        padding: 70px 0 90px;
+    }
+}
+@media (max-width: 1199px) {
+ .card-title {
+    font-size: 18px;
+ }
+
+ .card-excerpt {
+    line-height: 1.6;
+    margin-bottom: 10px;
+ }
+
+ .blog-grid-section .row {
+     --bs-gutter-x: 1rem
+
+ }
+}
