@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 
-export default function NovaRedHero() {
+export default function NovaRedHero({ product }) {
     const imgRef = useRef(null)
     const imgRef2 = useRef(null)
     const sectionRef = useRef(null);
@@ -157,15 +157,13 @@ export default function NovaRedHero() {
                     {/* Left Column: Text Content */}
                     <div className="col-12 col-lg-4 col-md-6 nova-text-col">
                         <h2 className="sm-title" data-reveal>
-                            {splitWords("Nova Red")}
+                            {splitWords(product.futureHeading)}
                         </h2>
                         <p className="desc"
                             ref={(el) => {
                                 if (el) paragraphRefs.current[0] = el;
                             }}
-                        >
-                            Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium
-                        </p>
+                        >{product.detail1}</p>
                         <div data-reveal>
                             <table className="nova-table">
                                 <thead>

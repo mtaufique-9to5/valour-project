@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 
-export default function RM7501Hero() {
+export default function RM7501Hero({ product }) {
   const sectionRef = useRef(null);
   const paragraphRefs = useRef([]);
 
@@ -81,7 +81,7 @@ export default function RM7501Hero() {
           <div className="col-12 col-md-7 col-lg-6 order-2 order-md-1">
             <div className="rm-hero__text">
               <h2 className="big-title" data-reveal>
-                {splitWords("Nova Red - Night")}
+                {splitWords(`${product?.secTitle}`)}
               </h2>
               <p className="desc"
                 ref={(el) => {

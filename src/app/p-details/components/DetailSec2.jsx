@@ -5,7 +5,7 @@ import 'aos/dist/aos.css'
 
 
 
-export default function NovaRedHero() {
+export default function NovaRedHero({product}) {
     const sectionRef = useRef(null);
     const paragraphRefs = useRef([]);
 
@@ -174,7 +174,8 @@ export default function NovaRedHero() {
 
                     {/* Right Column: Watch Images */}
                     <div className="col-12 col-lg-6 col-md-6">
-                        <div className="img-sec" style={{ backgroundImage: "url(/images/d-sec-2-img.jpg)" }}></div>
+                       <div className="img-sec" style={{ backgroundImage: "url(/images/d-sec-2-img.jpg)" }}>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import ParraInner1 from "./ParraInner1"
 
-export default function PremiumParallax() {
+export default function PremiumParallax({product}) {
     const imageRefs = useRef([])
     const ticking = useRef(false)
 
@@ -60,11 +60,11 @@ export default function PremiumParallax() {
                             }
                         }}
                         className="luxury-image"
-                        src="/images/parra-sec-2-img.jpg"
+                        src={product.secbgImage3}
                         alt="Nova Red Lume"
                     />
                 </div>
-                <ParraInner1 />
+                <ParraInner1  product={product}/>
             </section>
         </main>
     )

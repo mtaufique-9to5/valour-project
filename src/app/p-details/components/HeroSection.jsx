@@ -29,7 +29,7 @@ export default function PremiumParallax({ product }) {
 
                         // Dynamic scale - zoom in as it comes into view
                         let scale = 1 + (0.5 - Math.abs(scrollProgress - 0.5)) * 0.45
-                        scale = Math.max(1, Math.min(scale, 1.25))
+                        scale = Math.max(1, Math.min(scale, 1))
 
                         image.style.transform = `translateY(${move}px) scale(${scale})`
                         image.style.willChange = 'transform'
@@ -64,8 +64,8 @@ export default function PremiumParallax({ product }) {
                         className="luxury-image"
                         // src="/images/p-hero-img.webp"
                         // alt="Luxury watch hero"
-                        src={product.image}
-                          alt={product.name}
+                        src={product?.mainImage}
+                          alt={product?.name}
 
                             
                     />
