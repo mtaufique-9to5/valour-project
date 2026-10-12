@@ -362,7 +362,7 @@ export default function HorizonTimepieces() {
                 className={`ht-card ${watch.color} ${animatedCards.has(watch.id) ? "animated" : ""}`}
                 style={{ animationDelay: `${index * 80}ms` }}
                 // onClick={() => handleCart(watch)}
-                onClick={() => router.push("/p-details")}
+                 onClick={() => router.push(`/p-details/${watch.slug}`)}
               >
                 <div className="ht-card-inner">
                   <div className="ht-card-glow" />

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import HeroInner from "./HeroInner"
 
-export default function PremiumParallax() {
+export default function PremiumParallax({ product }) {
     const imageRefs = useRef([])
     const ticking = useRef(false)
 
@@ -48,6 +48,8 @@ export default function PremiumParallax() {
         return () => document.getElementById('main-scroller')?.removeEventListener('scroll', handleScroll)
     }, [])
 
+    console.log(product);
+
     return (
         <main className="luxury-main">
             <section className="luxury-section">
@@ -60,11 +62,15 @@ export default function PremiumParallax() {
                             }
                         }}
                         className="luxury-image"
-                        src="/images/p-hero-img.webp"
-                        alt="Luxury watch hero"
+                        // src="/images/p-hero-img.webp"
+                        // alt="Luxury watch hero"
+                        src={product.image}
+                          alt={product.name}
+
+                            
                     />
                 </div>
-                <HeroInner />
+                <HeroInner product={product} />
             </section>
         </main>
     )

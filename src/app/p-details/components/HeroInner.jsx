@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useEffect, useRef } from "react";
 
 
-export default function RM7501Hero() {
+export default function RM7501Hero({product}) {
   const sectionRef = useRef(null);
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function RM7501Hero() {
           <div className="col-12 col-md-7 col-lg-6 order-2 order-md-1">
             <div className="rm-hero__text">
               <h1 className="big-title" data-reveal>
-                {splitWords("Nova Red")}
+                {splitWords(`${product.name}`)}
               </h1>
               <p className="rm-subtitle" data-reveal>
                 {splitWords("Flying Tourbillon Sapphire")}
