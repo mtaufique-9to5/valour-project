@@ -10,7 +10,7 @@ import CartSidebar from '@/components/CartSidebar'
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body >
+      <body>
         <Provider store={store}>
         <CartSidebar />
           {children}

@@ -162,7 +162,8 @@ const ProductSec = () => {
           >
             {products.map((watch, index) => (
               <SwiperSlide>
-                <Link href="/p-details" className='cards-link'>
+                 
+                <Link href={`/p-details/${watch.slug}`} className='cards-link'>   
                   {/* <div className="pro-card">
                     <img src={item.image} alt="watch" />
                     <div className="details">

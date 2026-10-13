@@ -426,7 +426,7 @@ export default function HorizonTimepieces() {
           <div className={`ht-grid`}>
             <div
               className={`ht-card black`}
-              onClick={() => router.push("/p-details")}
+              onClick={() => router.push("/p-details/eclipse-black")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />
@@ -477,7 +477,7 @@ export default function HorizonTimepieces() {
             </div>
             <div
               className={`ht-card blue`}
-              onClick={() => router.push("/p-details")}
+              onClick={() => router.push("/p-details/astral-blue")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />
@@ -528,7 +528,7 @@ export default function HorizonTimepieces() {
             </div>
             <div
               className={`ht-card yellow`}
-              onClick={() => router.push("/p-details")}
+              onClick={() => router.push("/p-details/sunseeker-yellow")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />
@@ -579,7 +579,7 @@ export default function HorizonTimepieces() {
             </div>
             <div
               className={`ht-card silver`}
-              onClick={() => router.push("/p-details")}
+              onClick={() => router.push("/p-details/frost-silver")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />
@@ -630,7 +630,7 @@ export default function HorizonTimepieces() {
             </div>
             <div
               className={`ht-card red`}
-              onClick={() => router.push("/p-details")}
+              onClick={() => router.push("/p-details/nova-red")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />
@@ -681,7 +681,7 @@ export default function HorizonTimepieces() {
             </div>
             <div
               className={`ht-card silver`}
-              onClick={() => router.push("/p-details")}
+              onClick={() => router.push("/p-details/aurora-mint ")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />
