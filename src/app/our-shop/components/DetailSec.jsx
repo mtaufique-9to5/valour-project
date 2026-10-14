@@ -3,9 +3,9 @@ import { useEffect, useRef } from "react";
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 
-
-
-export default function NovaRedHero() {
+export default function NovaRedHero({ product }) {
+    const imgRef = useRef(null)
+    const imgRef2 = useRef(null)
     const sectionRef = useRef(null);
     const paragraphRefs = useRef([]);
 
@@ -30,6 +30,18 @@ export default function NovaRedHero() {
 
 
 
+
+        // Image - scale, rotate, blur
+        if (imgRef.current) {
+            imgRef.current.style.opacity = '0'
+            imgRef.current.style.transform = 'scale(0.7) rotateY(-15deg) rotateX(10deg) translateZ(0)'
+            imgRef.current.style.filter = 'blur(12px) brightness(0.8)'
+        }
+        if (imgRef2.current) {
+            imgRef2.current.style.opacity = '0'
+            imgRef2.current.style.transform = 'scale(0.7) rotateY(-15deg) rotateX(10deg) translateZ(0)'
+            imgRef2.current.style.filter = 'blur(12px) brightness(0.8)'
+        }
 
         paragraphRefs.current.forEach((el) => {
             if (!el) return;
@@ -64,6 +76,36 @@ export default function NovaRedHero() {
 
 
                         // Image - premium entrance with parallax simulation
+                        if (imgRef.current) {
+                            setTimeout(() => {
+                                imgRef.current.style.transition = 'all 1.1s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                                imgRef.current.style.opacity = '1'
+                                imgRef.current.style.transform = 'scale(1) rotateY(0deg) rotateX(0deg) translateZ(0)'
+                                imgRef.current.style.filter = 'blur(0px) brightness(1)'
+                            }, 300)
+
+
+                            imgRef.current.addEventListener('mouseleave', () => {
+                                imgRef.current.style.transition = 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                                imgRef.current.style.transform = 'scale(1) rotateY(0deg) rotateX(0deg)'
+                                imgRef.current.style.filter = 'blur(0px) brightness(1)'
+                            })
+                        }
+                        if (imgRef2.current) {
+                            setTimeout(() => {
+                                imgRef2.current.style.transition = 'all 1.1s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                                imgRef2.current.style.opacity = '1'
+                                imgRef2.current.style.transform = 'scale(1) rotateY(0deg) rotateX(0deg) translateZ(0)'
+                                imgRef2.current.style.filter = 'blur(0px) brightness(1)'
+                            }, 300)
+
+
+                            imgRef2.current.addEventListener('mouseleave', () => {
+                                imgRef2.current.style.transition = 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                                imgRef2.current.style.transform = 'scale(1) rotateY(0deg) rotateX(0deg)'
+                                imgRef2.current.style.filter = 'blur(0px) brightness(1)'
+                            })
+                        }
 
                         paragraphRefs.current.forEach((el, index) => {
                             if (!el) return;
@@ -108,64 +150,72 @@ export default function NovaRedHero() {
             </span>
         ));
 
-
-
     return (
-        <section className="nova-section d-sec-2" ref={sectionRef}>
-
+        <section className="nova-section" ref={sectionRef}>
             <div className="container">
                 <div className="row">
                     {/* Left Column: Text Content */}
-                    <div className="col-12 col-lg-6 col-md-6 nova-text-col">
+                    <div className="col-12 col-lg-4 col-md-6 nova-text-col">
                         <h2 className="sm-title" data-reveal>
-                            {splitWords("Movement")}
+                            {splitWords(product.futureHeading)}
                         </h2>
                         <p className="desc"
                             ref={(el) => {
                                 if (el) paragraphRefs.current[0] = el;
                             }}
-                        >
-                            Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-                        </p>
+                        >{product.detail1}</p>
                         <div data-reveal>
                             <table className="nova-table">
-
-                                <tbody>
+                                <thead>
                                     <tr>
-                                        <td
+                                        <th
                                             ref={(el) => {
                                                 if (el) paragraphRefs.current[1] = el;
                                             }}
-                                        >Movement </td>
-                                        <td
+                                        >Feature</th>
+                                        <th
                                             ref={(el) => {
                                                 if (el) paragraphRefs.current[2] = el;
                                             }}
-                                        >Automatic Mechanical</td>
+                                        >Specification</th>
                                     </tr>
+                                </thead>
+                                <tbody>
                                     <tr>
                                         <td
                                             ref={(el) => {
                                                 if (el) paragraphRefs.current[3] = el;
                                             }}
-                                        >Power Reserve</td>
+                                        >Case Material</td>
                                         <td
                                             ref={(el) => {
                                                 if (el) paragraphRefs.current[4] = el;
                                             }}
-                                        >72 Hours</td>
+                                        >Titanium</td>
                                     </tr>
                                     <tr>
                                         <td
                                             ref={(el) => {
                                                 if (el) paragraphRefs.current[5] = el;
                                             }}
-                                        >Water Resistance</td>
+                                        >Case Diameter</td>
                                         <td
                                             ref={(el) => {
                                                 if (el) paragraphRefs.current[6] = el;
                                             }}
-                                        >100m / 10 ATM</td>
+                                        >40mm</td>
+                                    </tr>
+                                    <tr>
+                                        <td
+                                            ref={(el) => {
+                                                if (el) paragraphRefs.current[7] = el;
+                                            }}
+                                        >Case Thickness</td>
+                                        <td
+                                            ref={(el) => {
+                                                if (el) paragraphRefs.current[8] = el;
+                                            }}
+                                        >11.2mm</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -173,8 +223,26 @@ export default function NovaRedHero() {
                     </div>
 
                     {/* Right Column: Watch Images */}
-                    <div className="col-12 col-lg-6 col-md-6">
-                        <div className="img-sec" style={{ backgroundImage: "url(/images/d-sec-2-img.jpg)" }}></div>
+                    <div className="col-12 col-lg-8 col-md-6 nova-image-col" data-reveal>
+                        <div className="row">
+                            <div className="col-md-6">
+                                <img
+                                    ref={imgRef}
+                                    src="/images/nova-sec-img-1.png"
+                                    alt="Nova Red Watch"
+                                    width={479}
+                                    height={675}
+                                />
+                            </div>
+                            <div className="col-md-6">
+                                <img
+                                    ref={imgRef2}
+                                    src="/images/nova-sec-img-2.png"
+                                    alt="Nova Red Watch Detail"
+                                    className="watch-2"
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

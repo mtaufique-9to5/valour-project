@@ -362,7 +362,7 @@ export default function HorizonTimepieces() {
                 className={`ht-card ${watch.color} ${animatedCards.has(watch.id) ? "animated" : ""}`}
                 style={{ animationDelay: `${index * 80}ms` }}
                 // onClick={() => handleCart(watch)}
-                 onClick={() => router.push(`/p-details/${watch.slug}`)}
+                onClick={() => router.push(`/our-shop/${watch.slug}`)}
               >
                 <div className="ht-card-inner">
                   <div className="ht-card-glow" />
@@ -426,7 +426,7 @@ export default function HorizonTimepieces() {
           <div className={`ht-grid`}>
             <div
               className={`ht-card black`}
-              onClick={() => router.push("/p-details/eclipse-black")}
+              onClick={() => router.push("/our-shop/eclipse-black")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />
@@ -477,7 +477,7 @@ export default function HorizonTimepieces() {
             </div>
             <div
               className={`ht-card blue`}
-              onClick={() => router.push("/p-details/astral-blue")}
+              onClick={() => router.push("/our-shop/astral-blue")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />
@@ -528,7 +528,7 @@ export default function HorizonTimepieces() {
             </div>
             <div
               className={`ht-card yellow`}
-              onClick={() => router.push("/p-details/sunseeker-yellow")}
+              onClick={() => router.push("/our-shop/sunseeker-yellow")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />
@@ -579,7 +579,7 @@ export default function HorizonTimepieces() {
             </div>
             <div
               className={`ht-card silver`}
-              onClick={() => router.push("/p-details/frost-silver")}
+              onClick={() => router.push("/our-shop/frost-silver")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />
@@ -630,7 +630,7 @@ export default function HorizonTimepieces() {
             </div>
             <div
               className={`ht-card red`}
-              onClick={() => router.push("/p-details/nova-red")}
+              onClick={() => router.push("/our-shop/nova-red")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />
@@ -681,7 +681,7 @@ export default function HorizonTimepieces() {
             </div>
             <div
               className={`ht-card silver`}
-              onClick={() => router.push("/p-details/aurora-mint ")}
+              onClick={() => router.push("/our-shop/aurora-mint ")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />

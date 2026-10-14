@@ -8,7 +8,7 @@ import DetailSec3 from "../components/DetailSec3";
 import ParraSec1 from "../components/ParraSec1";
 import ParraSec2 from "../components/ParraSec2";
 import StrapSec from "../components/StrapSec";
-import "../pdetails.css";
+import "./pdetails.css";
 import "@/app/globals.css";
 import PageTransition from "@/components/PageTransition";
 import ScrollProvider from "@/components/ScrollProvider";

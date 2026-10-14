@@ -76,7 +76,7 @@ export default function RM7501Hero({ product }) {
       <div className="rm-hero__scrim" />
 
       <div className="container rm-hero__grid">
-        <div className="row h-100 align-items-end gx-0">
+        <div className="row h-100 align-items-end gx-0 justify-content-end">
           {/* Text column */}
           <div className="col-12 col-md-7 col-lg-6 order-2 order-md-1">
             <div className="rm-hero__text">
@@ -94,9 +94,9 @@ export default function RM7501Hero({ product }) {
           </div>
 
           {/* Watch image column */}
-          <div className="col-12 col-md-5 col-lg-6 order-1 order-md-2">
+          {/* <div className="col-12 col-md-5 col-lg-6 order-1 order-md-2">
 
-          </div>
+          </div> */}
         </div>
       </div>
 

@@ -5,10 +5,10 @@ import 'react-before-after-slider-component/dist/build.css';
 
 const SliderImage = () => {
     const FIRST_IMAGE = {
-        imageUrl: '/images/watch_1.jpg'
+        imageUrl: '/images/bright-img.png'
     };
     const SECOND_IMAGE = {
-        imageUrl: '/images/watch_2.jpg'
+        imageUrl: '/images/dull-img.png'
     };
     return (
         <section className='slider-image'>

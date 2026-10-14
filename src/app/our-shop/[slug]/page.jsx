@@ -14,6 +14,12 @@ export function generateStaticParams() {
   return slugs.map((slug) => ({ slug }));
 }
 
+// export default async function Page({ params }) {
+//   const { slug } = await params;
+//   return <ProductView slug={slug} />;
+// }
+
+
 export default async function Page({ params }) {
   const { slug } = await params;
   return <ProductView slug={slug} />;

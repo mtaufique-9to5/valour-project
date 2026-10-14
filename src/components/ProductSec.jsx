@@ -162,8 +162,8 @@ const ProductSec = () => {
           >
             {products.map((watch, index) => (
               <SwiperSlide>
-                 
-                <Link href={`/p-details/${watch.slug}`} className='cards-link'>   
+
+                <Link href={`/our-shop/${watch.slug}`} className='cards-link'>
                   {/* <div className="pro-card">
                     <img src={item.image} alt="watch" />
                     <div className="details">
@@ -179,8 +179,8 @@ const ProductSec = () => {
                     data-id={watch.id}
                     className={`ht-card ${watch.color}`}
                     style={{ animationDelay: `${index * 80}ms` }}
-                    // onClick={() => handleCart(watch)}
-                    // onClick={() => router.push("/p-details")}
+                  // onClick={() => handleCart(watch)}
+                  // onClick={() => router.push("/our-shop")}
                   >
                     <div className="ht-card-inner">
                       <div className="ht-card-glow" />

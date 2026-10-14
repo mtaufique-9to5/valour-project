@@ -141,10 +141,10 @@ const AboutSec = () => {
             <p ref={paraRef} data-aos="fade-up" data-aos-delay="600">Valour's goal is to bring inspired designs within reach for all collectors and enthusiasts.
               With Lucent, we focused on dimensionality, execution, and presence.</p>
           </div>
-          <div className="col-md-6">
-            <div className="img-box">
-              <img ref={imgRef} src="/images/about-img.webp" alt="" className="abt-img" data-aos="fade-up" data-aos-delay="400" />
-            </div>
+          <div className="col-md-12">
+            {/* <div className="img-box">
+              <img ref={imgRef} src="/images/about-bg.jpeg" alt="" className="abt-img" data-aos="fade-up" data-aos-delay="400" />
+            </div> */}
           </div>
         </div>
       </div>

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from 'react'
 import ParraInner1 from "./ParraInner1"
+import Image from "next/image";
 
-export default function PremiumParallax() {
+export default function PremiumParallax({product}) {
     const imageRefs = useRef([])
     const ticking = useRef(false)
 
@@ -53,18 +54,20 @@ export default function PremiumParallax() {
             <section className="luxury-section">
 
                 <div className="luxury-image-wrap">
-                    <img
+                    <Image
                         ref={el => {
                             if (el && !imageRefs.current.includes(el)) {
                                 imageRefs.current.push(el)
                             }
                         }}
                         className="luxury-image"
-                        src="/images/parra-sec-2-img.jpg"
+                        src={product.secbgImage}
                         alt="Nova Red Lume"
+                        width={1743}
+                        height={866}
                     />
                 </div>
-                <ParraInner1 />
+                <ParraInner1 product={product} />
             </section>
         </main>
     )

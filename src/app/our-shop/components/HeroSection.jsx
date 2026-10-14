@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from 'react'
 import HeroInner from "./HeroInner"
+import Image from "next/image";
 
-export default function PremiumParallax() {
+export default function PremiumParallax({ product }) {
     const imageRefs = useRef([])
     const ticking = useRef(false)
 
@@ -29,7 +30,7 @@ export default function PremiumParallax() {
 
                         // Dynamic scale - zoom in as it comes into view
                         let scale = 1 + (0.5 - Math.abs(scrollProgress - 0.5)) * 0.45
-                        scale = Math.max(1, Math.min(scale, 1.25))
+                        scale = Math.max(1, Math.min(scale, 1))
 
                         image.style.transform = `translateY(${move}px) scale(${scale})`
                         image.style.willChange = 'transform'
@@ -48,23 +49,28 @@ export default function PremiumParallax() {
         return () => document.getElementById('main-scroller')?.removeEventListener('scroll', handleScroll)
     }, [])
 
+    console.log(product);
+
     return (
         <main className="luxury-main">
             <section className="luxury-section">
 
                 <div className="luxury-image-wrap">
-                    <img
+                    <Image
                         ref={el => {
                             if (el && !imageRefs.current.includes(el)) {
                                 imageRefs.current.push(el)
                             }
                         }}
                         className="luxury-image"
-                        src="/images/p-hero-img.webp"
-                        alt="Luxury watch hero"
+                        src={product?.mainImage}
+                        alt={product?.name}
+                        width={1877}
+                        height={866}
+
                     />
                 </div>
-                <HeroInner />
+                <HeroInner product={product} />
             </section>
         </main>
     )

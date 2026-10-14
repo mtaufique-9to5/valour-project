@@ -3,7 +3,7 @@ const nextConfig = {
   output: 'export',
   basePath: process.env.BASE_PATH || '',
   assetPrefix: process.env.BASE_PATH || '',
-  trailingSlash: false,
+  trailingSlash: true,
 
   images: {
     unoptimized: true,
