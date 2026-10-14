@@ -404,3 +404,135 @@ describe('Step 3: getAddOutcome', () => {
     assert.equal(getAddOutcome(lines, { kind: 'custom', productId: CUSTOM, options: CONFIG_B }).outcome, 'added')
   })
 })
+
+// ─── Audit Step 1 fixes ─────────────────────────────────────────────────────
+
+import { configureStore } from '@reduxjs/toolkit'
+import { createClickGuard } from '../src/app/features/cart/clickGuard.js'
+import { isUnrecognizedLine, isWellFormedLine } from '../src/app/features/cart/cartSlice.js'
+import { setPreservedLines } from '../src/app/features/cart/cartStorage.js'
+import { createCartPersistence } from '../src/app/features/cart/cartPersistence.js'
+import sidebarReducer, { clearCartNotice, showCartNotice, toggleCartSidebar } from '../src/app/features/cart/cSidebarSlice.js'
+
+describe('F-15: click guard (a rapid burst adds once; a later click adds again)', () => {
+  const accepted = (times, lineIds = times.map(() => 'a')) => {
+    const guard = createClickGuard(400)
+    return times.filter((t, i) => !guard.isRepeat(lineIds[i], t)).length
+  }
+
+  test('a burst where every gap is under 400 ms counts once', () => {
+    assert.equal(accepted([0, 200, 400, 600, 800]), 1)
+    assert.equal(accepted([0, 100, 150, 399]), 1)
+  })
+
+  test('ignored clicks restart the window', () => {
+    // Before the fix, 0 / 200 / 400 added twice (400 was 400 ms after the first accepted click).
+    assert.equal(accepted([0, 200, 400]), 1)
+  })
+
+  test('a click 400 ms or more after the previous one starts a new burst', () => {
+    assert.equal(accepted([0, 450]), 2)
+    assert.equal(accepted([0, 200, 600]), 2)
+    assert.equal(accepted([0, 400, 800]), 3)
+  })
+
+  test('different lines never block each other', () => {
+    assert.equal(accepted([0, 100, 150], ['a', 'b', 'a']), 3)
+  })
+})
+
+describe('F-14: lines from other tabs are never deleted', () => {
+  let store
+  beforeEach(() => {
+    store = new Map()
+    globalThis.localStorage = {
+      writes: 0,
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem(k, v) { this.writes++; store.set(k, String(v)) },
+      removeItem: (k) => store.delete(k),
+    }
+  })
+  afterEach(() => { delete globalThis.localStorage; setPreservedLines([]) })
+
+  const makeStore = () => configureStore({
+    reducer: { cart: reducer },
+    middleware: (getDefault) => getDefault().prepend(createCartPersistence()),
+  })
+  const savedLines = () => JSON.parse(store.get(CART_STORAGE_KEY)).lines
+  const UNKNOWN = { kind: 'watch', productId: 77, options: {}, quantity: 2 }
+
+  test('isWellFormedLine / isUnrecognizedLine separate unknown-but-valid from corrupt', () => {
+    assert.equal(isWellFormedLine(UNKNOWN), true)
+    assert.equal(isUnrecognizedLine(UNKNOWN), true)
+    assert.equal(isUnrecognizedLine({ kind: 'watch', productId: W1, options: {}, quantity: 1 }), false, 'known line')
+    assert.equal(isUnrecognizedLine({ kind: 'strap', productId: 'new-strap', options: { size: 22 }, quantity: 1 }), true, 'unknown kind')
+    for (const bad of [null, 'x', [], { kind: 'watch', productId: 77, quantity: 0 }, { kind: 'watch', productId: 77, quantity: 11 },
+      { kind: 'watch', productId: 1.5, quantity: 1 }, { kind: 3, productId: 77, quantity: 1 }, { kind: 'watch', productId: 77, options: [], quantity: 1 },
+      { kind: 'watch', productId: 77, options: { a: { b: 1 } }, quantity: 1 }]) {
+      assert.equal(isWellFormedLine(bad), false, JSON.stringify(bad))
+    }
+  })
+
+  test('loading the cart never writes to storage', () => {
+    const s = makeStore()
+    s.dispatch(hydrateCart([{ kind: 'watch', productId: W1, options: {}, quantity: 1 }, UNKNOWN]))
+    assert.equal(globalThis.localStorage.writes, 0)
+  })
+
+  test('user actions save; nothing saves before the cart has loaded', () => {
+    const s = makeStore()
+    s.dispatch(addItem({ kind: 'watch', productId: W1 }))
+    assert.equal(globalThis.localStorage.writes, 0, 'not hydrated yet')
+    s.dispatch(hydrateCart([]))
+    s.dispatch(addItem({ kind: 'watch', productId: W1 }))
+    assert.deepEqual(savedLines(), [{ kind: 'watch', productId: W1, options: {}, quantity: 1 }])
+  })
+
+  test("a line this tab doesn't recognise survives this tab's own saves", () => {
+    const raw = [{ kind: 'watch', productId: W2, options: {}, quantity: 1 }, UNKNOWN, { kind: 'watch', productId: 'junk', quantity: -1 }]
+    setPreservedLines(raw.filter(isUnrecognizedLine)) // what CartHydrator does
+    const s = makeStore()
+    s.dispatch(hydrateCart(raw))
+    s.dispatch(incrementQuantity(makeLineId('watch', W2)))
+    assert.deepEqual(savedLines(), [{ kind: 'watch', productId: W2, options: {}, quantity: 2 }, UNKNOWN], 'corrupt line dropped, unknown kept')
+    s.dispatch(removeItem(makeLineId('watch', W2)))
+    assert.deepEqual(savedLines(), [UNKNOWN])
+  })
+
+  test('clear cart removes preserved lines too', () => {
+    setPreservedLines([UNKNOWN])
+    const s = makeStore()
+    s.dispatch(hydrateCart([{ kind: 'watch', productId: W1, options: {}, quantity: 1 }, UNKNOWN]))
+    s.dispatch(clearCart())
+    assert.deepEqual(savedLines(), [])
+  })
+
+  test('preserved lines are capped at 50', () => {
+    setPreservedLines(Array.from({ length: 80 }, (_, i) => ({ ...UNKNOWN, productId: 1000 + i })))
+    const s = makeStore()
+    s.dispatch(hydrateCart([]))
+    s.dispatch(addItem({ kind: 'watch', productId: W1 }))
+    assert.equal(savedLines().length, 51)
+  })
+})
+
+describe('F-12: sidebar notice', () => {
+  const run2 = (...actions) => actions.reduce((s, a) => sidebarReducer(s, a), sidebarReducer(undefined, { type: '@@init' }))
+
+  test('shows a notice with a fresh id; clearing an old id keeps a newer notice', () => {
+    let s = run2(toggleCartSidebar(true), showCartNotice({ type: 'success', text: 'A added' }))
+    assert.deepEqual(s.notice, { type: 'success', text: 'A added', id: 1 })
+    s = sidebarReducer(s, showCartNotice({ type: 'error', text: 'Maximum 10 per item.' }))
+    assert.equal(s.notice.id, 2)
+    s = sidebarReducer(s, clearCartNotice(1))
+    assert.equal(s.notice.text, 'Maximum 10 per item.', 'stale timer must not clear the newer notice')
+    s = sidebarReducer(s, clearCartNotice(2))
+    assert.equal(s.notice, null)
+  })
+
+  test('closing the sidebar clears its notice', () => {
+    const s = run2(toggleCartSidebar(true), showCartNotice({ type: 'success', text: 'x' }), toggleCartSidebar(false))
+    assert.equal(s.notice, null)
+    assert.equal(s.value, false)
+  })
+})

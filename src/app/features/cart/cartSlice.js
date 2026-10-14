@@ -33,6 +33,22 @@ const isPlainOptions = (options) =>
   !Array.isArray(options) &&
   Object.values(options).every((value) => typeof value === 'string' || typeof value === 'number')
 
+// Structure check only, no catalog lookup: the shape a legitimate saved line has,
+// even one written by another tab whose catalog knows products this tab doesn't.
+export const isWellFormedLine = (raw) =>
+  raw !== null &&
+  typeof raw === 'object' &&
+  !Array.isArray(raw) &&
+  typeof raw.kind === 'string' &&
+  (typeof raw.productId === 'string' || Number.isInteger(raw.productId)) &&
+  isPlainOptions(raw.options === undefined ? {} : raw.options) &&
+  Number.isInteger(raw.quantity) &&
+  raw.quantity >= 1 &&
+  raw.quantity <= MAX_LINE_QUANTITY
+
+// A saved line this tab can't use but must not delete (see cartStorage's preserved lines).
+export const isUnrecognizedLine = (raw) => isWellFormedLine(raw) && normalizeLine(raw) === null
+
 // Turns untrusted input (storage, action payloads) into a valid line, or null.
 export const normalizeLine = (raw) => {
   if (raw === null || typeof raw !== 'object') return null

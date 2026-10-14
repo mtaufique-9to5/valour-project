@@ -2492,6 +2492,21 @@ body {
   color: rgba(256, 256, 256, .7);
 }
 
+/* Cart feedback inside the sidebar (takes no space when empty). */
+.cart-sidebar .cart-notice {
+  margin: 0;
+  font-size: 14px;
+  color: #fff;
+}
+
+.cart-sidebar .cart-notice:not(:empty) {
+  padding-top: 15px;
+}
+
+.cart-sidebar .cart-notice.error {
+  color: #ff8a80;
+}
+
 
 
 /* /////////////appointment Modal/////////// */

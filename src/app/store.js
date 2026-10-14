@@ -2,7 +2,7 @@ import { configureStore } from '@reduxjs/toolkit'
 import cartReducer from './features/cart/cartSlice'
 import  cSidebarReducer  from './features/cart/cSidebarSlice'
 import  productReducer  from './features/product/productSlice'
-import { saveCart } from './features/cart/cartStorage'
+import { createCartPersistence } from './features/cart/cartPersistence'
 
 export const store = configureStore({
   reducer: {
@@ -10,16 +10,5 @@ export const store = configureStore({
     cSidebar: cSidebarReducer,
     product: productReducer
   },
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware().prepend(createCartPersistence()),
 })
-
-// Persist the cart whenever its lines change — but only once the saved cart has
-// been loaded, so the initial empty state can never overwrite it.
-if (typeof window !== 'undefined') {
-  let lastSavedLines
-  store.subscribe(() => {
-    const { lines, hydrated } = store.getState().cart
-    if (!hydrated || lines === lastSavedLines) return
-    lastSavedLines = lines
-    saveCart(lines)
-  })
-}

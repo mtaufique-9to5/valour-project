@@ -25,7 +25,6 @@ const Footer = () => {
                                     <li><Link className='footer-link' href="/our-shop">Our Shop</Link></li>
                                     <li><Link className='footer-link' href="/blog">Blog</Link></li>
                                     <li><Link className='footer-link' href="/blog-details">Blog Details</Link></li>
-                                    <li><Link className='footer-link' href="/product-details">Product Details</Link></li>
                                 </ul>
                             </div>
                             <div className="col-md-5 col-xl-4">

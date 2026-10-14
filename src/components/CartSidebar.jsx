@@ -1,6 +1,6 @@
 'use client'
 
-import { toggleCartSidebar } from '@/app/features/cart/cSidebarSlice';
+import { clearCartNotice, toggleCartSidebar } from '@/app/features/cart/cSidebarSlice';
 import {
     selectCartCount,
     selectCartLines,
@@ -15,6 +15,9 @@ import React, { useEffect, useRef } from 'react'
 import { FaCartArrowDown, FaLock, FaXmark } from 'react-icons/fa6'
 import { useDispatch, useSelector } from 'react-redux';
 
+// How long a cart notice stays visible.
+const NOTICE_MS = 4000;
+
 // Enter / Space activation for non-button elements acting as buttons.
 const onActivateKey = (handler) => (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -28,6 +31,7 @@ const CartSidebar = () => {
     const closeBtnRef = useRef();
     const dispatch = useDispatch();
     const isCartSideOpen = useSelector((state) => state.cSidebar.value);
+    const notice = useSelector((state) => state.cSidebar.notice);
 
     const lines = useSelector(selectCartLines);
     const count = useSelector(selectCartCount);
@@ -78,6 +82,13 @@ const CartSidebar = () => {
         };
     }, [isCartSideOpen, dispatch])
 
+    // Each notice clears itself; a newer one (new id) restarts the timer.
+    useEffect(() => {
+        if (!notice) return;
+        const timer = setTimeout(() => dispatch(clearCartNotice(notice.id)), NOTICE_MS);
+        return () => clearTimeout(timer);
+    }, [notice, dispatch])
+
     return (
         // inert while closed: the off-screen sidebar can't take focus or be read out.
         <div
@@ -101,6 +112,9 @@ const CartSidebar = () => {
                         <FaXmark />
                     </div>
                 </div>
+
+                {/* Always rendered so screen readers announce changes to it. */}
+                <p className={`cart-notice ${notice?.type ?? ''}`} role="status">{notice?.text}</p>
 
                 {hydrated && (
                     <div className="items">

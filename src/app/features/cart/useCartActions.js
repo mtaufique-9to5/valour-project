@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useMemo, useState, useSyncExternalStore } from 'react'
 import { useDispatch, useSelector, useStore } from 'react-redux'
 import toast from 'react-hot-toast'
 import { getCatalogItem } from '@/data/catalog'
@@ -14,9 +14,10 @@ import {
   removeItem,
   selectCartHydrated,
 } from './cartSlice'
-import { toggleCartSidebar } from './cSidebarSlice'
+import { showCartNotice, toggleCartSidebar } from './cSidebarSlice'
+import { createClickGuard } from './clickGuard'
 
-// Repeat adds of the same line within this window are treated as a double-click.
+// Clicks on the same line less than this far apart form one burst (see clickGuard).
 const DOUBLE_CLICK_MS = 400
 
 const subscribeNoop = () => () => {}
@@ -32,16 +33,27 @@ export const useCartReady = () => {
   return isClient && hydrated
 }
 
+// Cart feedback: inside the sidebar while it's open (a floating toast would cover
+// its Checkout / View cart buttons), otherwise a toast. A fixed toastId reuses one
+// toast instead of stacking duplicates.
+const notify = (dispatch, store, type, text, toastId) => {
+  if (store.getState().cSidebar.value) {
+    dispatch(showCartNotice({ type, text }))
+  } else {
+    toast[type](text, toastId ? { id: toastId } : undefined)
+  }
+}
+
 // Cart line actions with their user feedback, shared by the cart page and
 // sidebar so both behave identically.
 export const useCartActions = () => {
   const dispatch = useDispatch()
+  const store = useStore()
 
   return useMemo(() => ({
     increase: (line) => {
       if (line.quantity >= MAX_LINE_QUANTITY) {
-        // Fixed id: repeated clicks reuse one toast instead of stacking duplicates.
-        toast.error(`Maximum ${MAX_LINE_QUANTITY} per item.`, { id: 'cart-max-quantity' })
+        notify(dispatch, store, 'error', `Maximum ${MAX_LINE_QUANTITY} per item.`, 'cart-max-quantity')
         return
       }
       dispatch(incrementQuantity(line.lineId))
@@ -53,24 +65,24 @@ export const useCartActions = () => {
 
     remove: (lineId) => {
       dispatch(removeItem(lineId))
-      toast.success("Product removed Successfully!")
+      notify(dispatch, store, 'success', "Product removed Successfully!")
     },
 
     clear: () => {
       if (!window.confirm("Remove all items from your cart?")) return
       dispatch(clearCart())
-      toast.success("Cart cleared.")
+      notify(dispatch, store, 'success', "Cart cleared.")
     },
-  }), [dispatch])
+  }), [dispatch, store])
 }
 
-// Add-to-cart with its feedback: one toast per outcome (fixed ids) and the
-// cart sidebar opens. Returns 'added' | 'capped' | 'max' | 'invalid' | 'ignored'.
+// Add-to-cart with its feedback: the cart sidebar opens and shows one notice
+// per outcome. Returns 'added' | 'capped' | 'max' | 'invalid' | 'ignored'.
 // payload: { kind, productId, options?, quantity? = 1 }
 export const useAddToCart = () => {
   const dispatch = useDispatch()
   const store = useStore()
-  const lastAddRef = useRef({ lineId: null, time: 0 })
+  const [clickGuard] = useState(() => createClickGuard(DOUBLE_CLICK_MS))
 
   return useCallback((payload) => {
     const { cart } = store.getState()
@@ -84,25 +96,27 @@ export const useAddToCart = () => {
       return outcome
     }
 
-    const now = Date.now()
-    const last = lastAddRef.current
-    if (last.lineId === lineId && now - last.time < DOUBLE_CLICK_MS) {
+    // Only the first click of a rapid burst counts; the rest just keep the sidebar open.
+    if (clickGuard.isRepeat(lineId, Date.now())) {
       dispatch(toggleCartSidebar(true))
       return 'ignored'
     }
-    lastAddRef.current = { lineId, time: now }
 
+    // Open first so the feedback lands inside the sidebar (see notify).
+    dispatch(toggleCartSidebar(true))
     if (outcome === 'max') {
-      toast.error(`Maximum ${MAX_LINE_QUANTITY} per item.`, { id: 'cart-max-quantity' })
+      notify(dispatch, store, 'error', `Maximum ${MAX_LINE_QUANTITY} per item.`, 'cart-max-quantity')
     } else {
       dispatch(addItem(payload))
       const { name } = getCatalogItem(payload.kind, payload.productId)
-      toast.success(
+      notify(
+        dispatch,
+        store,
+        'success',
         outcome === 'capped' ? `Quantity limited to ${MAX_LINE_QUANTITY} per item.` : `${name} added to cart`,
-        { id: 'cart-added' }
+        'cart-added'
       )
     }
-    dispatch(toggleCartSidebar(true))
     return outcome
-  }, [dispatch, store])
+  }, [dispatch, store, clickGuard])
 }
