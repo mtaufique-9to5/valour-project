@@ -1,11 +1,12 @@
 "use client";
-import Link from 'next/link'
 import { useEffect, useRef } from "react";
 import Image from "next/image";
+import { useAddToCart } from "@/app/features/cart/useCartActions";
 
 
 export default function RM7501Hero({product}) {
   const sectionRef = useRef(null);
+  const addToCart = useAddToCart();
 
   useEffect(() => {
     const node = sectionRef.current;
@@ -58,7 +59,7 @@ export default function RM7501Hero({product}) {
               <p className="rm-subtitle" data-reveal>
                 {splitWords("Flying Tourbillon Sapphire")}
               </p>
-               <Link href="/cart" className='theme-btn'>Add to Cart</Link>
+               <button type="button" className='theme-btn' data-opens-cart onClick={() => addToCart({ kind: 'watch', productId: product.id })}>Add to Cart</button>
             </div>
           </div>
 

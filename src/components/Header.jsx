@@ -5,15 +5,24 @@ import { IoBagHandleOutline, IoSearchOutline } from 'react-icons/io5'
 import gsap from 'gsap'
 import ScrollTrigger from 'gsap/ScrollTrigger'
 import Link from 'next/link'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { toggleCartSidebar } from '@/app/features/cart/cSidebarSlice'
+import { selectCartCount } from '@/app/features/cart/cartSlice'
+import { formatBadgeCount } from '@/app/features/cart/cartFormat'
+import { useCartReady } from '@/app/features/cart/useCartActions'
 import SidebarMenu from './SidebarMenu'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const Header = () => {
   const dispatch = useDispatch();
+  const cartReady = useCartReady()
+  const storedCount = useSelector(selectCartCount)
+  // 0 until ready, so the first client render matches the server HTML.
+  const cartCount = cartReady ? storedCount : 0
   const headerRef = useRef(null)
+
+  const openCart = () => dispatch(toggleCartSidebar(true))
   const [scrolled, setScrolled] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -71,7 +80,24 @@ const Header = () => {
           </Link>
           <div className="side-box">
             <a href="#" className='theme-btn eng'>English</a>
-            <p onClick={() => dispatch(toggleCartSidebar(true))}><IoBagHandleOutline /></p>
+            <p
+              className='cart-trigger'
+              role="button"
+              tabIndex={0}
+              aria-label={`Open cart, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`}
+              onClick={openCart}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  openCart()
+                }
+              }}
+            >
+              <IoBagHandleOutline />
+              {cartCount > 0 && (
+                <span className='cart-count' aria-hidden="true">{formatBadgeCount(cartCount)}</span>
+              )}
+            </p>
           </div>
         </div>
       </nav>

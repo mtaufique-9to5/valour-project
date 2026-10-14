@@ -20,6 +20,14 @@ body {
     margin-top: 20px;
 }
 
+/* Add to Cart is a <button>: undo native button text styles so it matches the old link */
+.rm-hero .theme-btn {
+    font-weight: inherit;
+    letter-spacing: inherit;
+    text-align: inherit;
+    cursor: pointer;
+}
+
 .rm-hero__bg {
     position: absolute;
     inset: 0;

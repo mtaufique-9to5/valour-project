@@ -1,9 +1,15 @@
 "use client"
-import { removeItemInCart, updateQuantity } from '@/app/features/cart/cartSlice';
+import {
+  selectCartLines,
+  selectHasPricedItems,
+  selectHasUnpricedItems,
+  selectSubtotal,
+} from '@/app/features/cart/cartSlice';
+import { formatPrice, getTotalLabels } from '@/app/features/cart/cartFormat';
+import { useCartActions, useCartReady } from '@/app/features/cart/useCartActions';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import SplitType from 'split-type';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
@@ -11,9 +17,13 @@ import 'aos/dist/aos.css';
 
 
 export default function Cart() {
-  const dispatch = useDispatch()
+  const { increase, decrease, remove, clear } = useCartActions()
 
-  const cart = useSelector((state) => state.cart.value)
+  const cart = useSelector(selectCartLines)
+  const hydrated = useCartReady()
+  const subtotal = useSelector(selectSubtotal)
+  const hasUnpricedItems = useSelector(selectHasUnpricedItems)
+  const hasPricedItems = useSelector(selectHasPricedItems)
   const [note, setNote] = useState('');
 
   const sectionRef = useRef(null);
@@ -101,34 +111,16 @@ export default function Cart() {
     };
   }, []);
 
-  const updateQty = (id, qty) => {
-      dispatch(updateQuantity({
-        id,
-        qty
-      }))
-  };
-
-  const removeItem = (id) => {
-    try {
-      dispatch(removeItemInCart(id))
-      toast.success("Product removed Successfully!")
-    } catch (error) {
-      toast.error("Something went wrong.", error)
-    }
-
-  };
-
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totals = getTotalLabels({ subtotal, hasPricedItems, hasUnpricedItems });
 
   return (
     <>
       <section className="valour-cart" ref={sectionRef}>
-        <div><Toaster position="bottom-right"
-          reverseOrder={false} /></div>
         <div className="container">
           <h1 className="cart-title text-center">Cart</h1>
 
-          {cart.length === 0 ? (
+          {/* Render nothing until the saved cart is loaded, to avoid flashing "empty". */}
+          {!hydrated ? null : cart.length === 0 ? (
             <div className="empty-cart text-center">
               <p>Your cart is currently empty.</p>
               <Link href="/our-shop"><p className="continue-link">CONTINUE SHOPPING</p></Link>
@@ -145,19 +137,30 @@ export default function Cart() {
                   </div>
 
                   {cart.map((item) => (
-                    <div className="cart-row row align-items-center" key={item.id}>
+                    <div className="cart-row row align-items-center" key={item.lineId}>
                       <div className="col-6 col-md-7">
                         <div className="product-cell">
                           <div className="product-img-wrap">
-                            <img src={item.image} alt={item.name} />
+                            {item.layers ? (
+                              <div className="cart-layers" role="img" aria-label={item.name}>
+                                {item.layers.map((src) => (
+                                  <img key={src} src={src} alt="" />
+                                ))}
+                              </div>
+                            ) : (
+                              <img src={item.image} alt={item.name} />
+                            )}
                           </div>
                           <div className="product-info">
                             <p className="product-name">{item.name}</p>
-                            <p className="product-price">${item.price.toLocaleString()}</p>
-                            <p className="product-edition">{item.edition}</p>
+                            <p className="product-price">{formatPrice(item.unitPrice)}</p>
+                            {/* Kept even when empty: its margin spaces the REMOVE button. */}
+                            <p className="product-edition">
+                              {item.optionLabels.map((o) => `${o.label}: ${o.value}`).join(' · ')}
+                            </p>
                             <button
                               className="remove-btn"
-                              onClick={() => removeItem(item.id)}
+                              onClick={() => remove(item.lineId)}
                             >
                               REMOVE
                             </button>
@@ -168,14 +171,14 @@ export default function Cart() {
                       <div className="col-3 col-md-3 text-center">
                         <div className="qty-control">
                           <button
-                            onClick={() => updateQty(item.id, item.quantity - 1)}
+                            onClick={() => decrease(item)}
                             aria-label="Decrease quantity"
                           >
                             −
                           </button>
                           <span>{item.quantity}</span>
                           <button
-                            onClick={() => updateQty(item.id, item.quantity + 1)}
+                            onClick={() => increase(item)}
                             aria-label="Increase quantity"
                           >
                             +
@@ -185,13 +188,16 @@ export default function Cart() {
 
                       <div className="col-3 col-md-2 text-end">
                         <p className="row-total">
-                          ${(item.price * item.quantity).toLocaleString()}
+                          {formatPrice(item.lineTotal)}
                         </p>
                       </div>
                     </div>
                   ))}
                 </div>
 
+                <button className="remove-btn" onClick={clear}>
+                  CLEAR CART
+                </button>
               </div>
 
               {/* ===== ORDER SUMMARY ===== */}
@@ -199,12 +205,17 @@ export default function Cart() {
                 <div className="summary-card">
                   <div className="summary-line">
                     <span>Subtotal</span>
-                    <span>${subtotal.toLocaleString()}</span>
+                    <span>{totals.subtotal}</span>
                   </div>
                   <div className="summary-line total-line">
                     <span>Total</span>
-                    <span>${subtotal.toLocaleString()} USD</span>
+                    <span>{totals.total}</span>
                   </div>
+                  {totals.excludesUnpriced && (
+                    <p className="summary-note">
+                      Subtotal excludes items priced on request
+                    </p>
+                  )}
                   <p className="summary-note">
                     Taxes and shipping calculated at checkout
                   </p>

@@ -4,10 +4,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import AOS from 'aos';
 import 'aos/dist/aos.css';
-import toast, { Toaster } from 'react-hot-toast';
 import SplitType from "split-type";
-import { useDispatch, useSelector } from "react-redux";
-import { addToCart } from "@/app/features/cart/cartSlice";
+import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 
 
@@ -44,7 +42,6 @@ const filterOptions = {
 export default function HorizonTimepieces() {
   const router = useRouter();
   const sectionRef = useRef(null)
-  const dispatch = useDispatch()
   const products = useSelector((state) => state.product.value)
 
   useEffect(() => {
@@ -195,19 +192,9 @@ export default function HorizonTimepieces() {
   };
 
 
-  const handleCart = (w) => {
-    try {
-      dispatch(addToCart(w))
-    } catch (error) {
-      toast.error("Something went wrong.", error)
-    }
-
-  }
 
   return (
     <section className="ht-section" ref={sectionRef}>
-      <div><Toaster position="bottom-right"
-        reverseOrder={false} /></div>
       <div className="ht-glow-1" />
       <div className="ht-glow-2" />
       <div className="ht-noise" />
@@ -361,7 +348,6 @@ export default function HorizonTimepieces() {
                 data-id={watch.id}
                 className={`ht-card ${watch.color} ${animatedCards.has(watch.id) ? "animated" : ""}`}
                 style={{ animationDelay: `${index * 80}ms` }}
-                // onClick={() => handleCart(watch)}
                 onClick={() => router.push(`/our-shop/${watch.slug}`)}
               >
                 <div className="ht-card-inner">
@@ -681,7 +667,7 @@ export default function HorizonTimepieces() {
             </div>
             <div
               className={`ht-card silver`}
-              onClick={() => router.push("/our-shop/aurora-mint ")}
+              onClick={() => router.push("/our-shop/aurora-mint")}
             >
               <div className="ht-card-inner">
                 <div className="ht-card-glow" />

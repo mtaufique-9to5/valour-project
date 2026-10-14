@@ -146,6 +146,34 @@ nav .side-box svg:hover {
   color: #ffffff9c;
 }
 
+/* Cart button + item count badge */
+nav .side-box .cart-trigger {
+  position: relative;
+  display: inline-flex;
+}
+
+nav .side-box .cart-trigger:focus-visible {
+  outline: 1px solid #fff;
+  outline-offset: 4px;
+}
+
+nav .side-box .cart-count {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background-color: #fff;
+  color: #000;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  pointer-events: none;
+}
+
 /* //////////////Navbar End///////////// */
 
 /* ////////////////Hero Start///////////// */
@@ -2350,6 +2378,20 @@ body {
   object-fit: cover;
 }
 
+/* Custom watch thumbnail: layer images stacked in one 90px box. The first
+   layer stays in flow to size the box; the rest sit on top of it. */
+.cart-sidebar .item .cart-layers {
+  position: relative;
+  width: 90px;
+}
+
+.cart-sidebar .item .cart-layers img + img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+}
+
 .cart-sidebar .t-box {
   display: flex;
   justify-content: space-between;
@@ -2407,6 +2449,47 @@ body {
 
 .cart-sidebar .head span {
   font-size: 13px;
+}
+
+/* Only the item list scrolls; head and checkout area stay in view. */
+.cart-sidebar .cart-sidebar-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.cart-sidebar .items {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.cart-sidebar .bottom {
+  flex-shrink: 0;
+}
+
+.cart-sidebar .item-link {
+  text-decoration: none;
+}
+
+.cart-sidebar button.rm {
+  background: none;
+  border: none;
+  padding: 0 0 4px;
+}
+
+.cart-sidebar .clear-cart {
+  align-self: flex-start;
+  margin: 20px 0;
+}
+
+.cart-sidebar .empty-text {
+  padding-top: 25px;
+  margin: 0;
+  font-size: 16px;
+  color: rgba(256, 256, 256, .7);
 }
 
 

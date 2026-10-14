@@ -175,6 +175,12 @@ body {
     text-decoration: none;
 }
 
+/* Add to Cart is a <button>: undo native button text styles so it matches the old link */
+.add-to-cart-btn {
+    letter-spacing: inherit;
+    text-align: inherit;
+}
+
 .add-to-cart-btn:hover {
     background: #fff;
     transform: translateY(-3px);

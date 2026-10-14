@@ -1,10 +1,16 @@
 "use client"
-import Link from 'next/link';
 import React, { useEffect, useRef, useState } from 'react'
 import SplitType from 'split-type'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 import Image from 'next/image';
+import { customizerOptions, DEFAULT_CUSTOM_OPTIONS } from '@/data/catalog';
+import { useAddToCart } from '@/app/features/cart/useCartActions';
+
+
+const { case: caseOptions, dial: dialOptions, strap: strapOptions } = customizerOptions;
+
+const findImage = (options, id) => options.find((option) => option.id === id)?.image;
 
 
 const Customizer = () => {
@@ -12,124 +18,16 @@ const Customizer = () => {
     const imgContainerRef = useRef(null)
     const headingRef = useRef(null)
     const tabMainRef = useRef(null)
-    const [step, setStep] = useState(0);
+    const [selection, setSelection] = useState(DEFAULT_CUSTOM_OPTIONS);
+    const addToCart = useAddToCart();
 
+    // Option click: update the selection and show the option's name, as before.
+    const selectOption = (key, option) => (e) => {
+        e.preventDefault();
+        setSelection((prev) => ({ ...prev, [key]: option.id }));
+        document.getElementById('stepDescription').textContent = option.name;
+    };
 
-    const dialOptions = [
-        {
-            name: "Black",
-            image: "/images/customizer/dial/dial-black.png",
-        },
-        {
-            name: "Light Blue",
-            image: "/images/customizer/dial/diallightblue.png",
-        },
-        {
-            name: "Mint",
-            image: "/images/customizer/dial/dial-mint.png",
-        },
-        {
-            name: "Navy Blue",
-            image: "/images/customizer/dial/dial-navy-blue.png",
-        },
-        {
-            name: "Orange",
-            image: "/images/customizer/dial/dial-orange.png",
-        },
-        {
-            name: "Purple",
-            image: "/images/customizer/dial/dial-purple.png",
-        },
-        {
-            name: "Red",
-            image: "/images/customizer/dial/dial-red.png",
-        },
-        {
-            name: "Silver",
-            image: "/images/customizer/dial/dial-silver.png",
-        },
-        {
-            name: "Teal",
-            image: "/images/customizer/dial/dial-teal.png",
-        },
-        {
-            name: "Yellow",
-            image: "/images/customizer/dial/dial-yellow.png",
-        },
-    ];
-
-
-
-    const strapOptions = [
-        {
-            name: "Black",
-            image: "/images/customizer/straps/strap_black_black.png",
-        },
-        {
-            name: "Black Grey",
-            image: "/images/customizer/straps/strap_black_grey.png",
-        },
-        {
-            name: "Black Silver",
-            image: "/images/customizer/straps/strap_black_silver.png",
-        },
-        {
-            name: "Grey Black",
-            image: "/images/customizer/straps/strap_grey_black.png",
-        },
-        {
-            name: "Grey Blue",
-            image: "/images/customizer/straps/strap_grey_blue.png",
-        },
-        {
-            name: "Grey",
-            image: "/images/customizer/straps/strap_grey_grey.png",
-        },
-        {
-            name: "Light Blue",
-            image: "/images/customizer/straps/strap_grey_light_blue.png",
-        },
-        {
-            name: "Grey Orange",
-            image: "/images/customizer/straps/strap_grey_orange.png",
-        },
-        {
-            name: "Grey Purple",
-            image: "/images/customizer/straps/strap_grey_purple.png",
-        },
-        {
-            name: "Grey Red",
-            image: "/images/customizer/straps/strap_grey_red.png",
-        },
-        {
-            name: "Grey Silver",
-            image: "/images/customizer/straps/strap_grey_silver.png",
-        },
-        {
-            name: "Grey Teal",
-            image: "/images/customizer/straps/strap_grey_Teal.png",
-        },
-        {
-            name: "Grey Yellow",
-            image: "/images/customizer/straps/strap_grey_yellow.png",
-        },
-    ];
-
-
-    const caseOptions = [
-        {
-            name: "Black",
-            image: "/images/customizer/case/case-black.png",
-        },
-        {
-            name: "Gold",
-            image: "/images/customizer/case/case-dold.png",
-        },
-        {
-            name: "Silver",
-            image: "/images/customizer/case/case-silver.png",
-        },
-    ];
 
     useEffect(() => {
         if (typeof window === 'undefined') return
@@ -304,79 +202,6 @@ const Customizer = () => {
         updateUI(0);
 
 
-        const imgCase = document.getElementById("imgCase");
-        const imgDial = document.getElementById("imgDial");
-        const imgStrap = document.getElementById("imgStrap");
-
-        // =====================
-        // CASE
-        // =====================
-
-        document.querySelectorAll(".case-option").forEach(item => {
-
-            item.addEventListener("click", function () {
-
-                document.querySelectorAll(".case-option").forEach(el => {
-                    el.closest(".salect").classList.remove("active");
-                });
-
-                this.closest(".salect").classList.add("active");
-
-                imgCase.src = this.dataset.image;
-
-                description.innerHTML = this.querySelector("p").innerHTML;
-
-            });
-
-        });
-
-
-        // =====================
-        // DIAL
-        // =====================
-
-        document.querySelectorAll(".dial-option").forEach(item => {
-
-            item.addEventListener("click", function () {
-
-                document.querySelectorAll(".dial-option").forEach(el => {
-                    el.closest(".salect").classList.remove("active");
-                });
-
-                this.closest(".salect").classList.add("active");
-
-                imgDial.src = this.dataset.image;
-
-                description.innerHTML = this.querySelector("p").innerHTML;
-
-            });
-
-        });
-
-
-        // =====================
-        // BAND
-        // =====================
-
-        document.querySelectorAll(".band-option").forEach(item => {
-
-            item.addEventListener("click", function () {
-
-                document.querySelectorAll(".band-option").forEach(el => {
-                    el.closest(".salect").classList.remove("active");
-                });
-
-                this.closest(".salect").classList.add("active");
-
-                imgStrap.src = this.dataset.image;
-
-                description.innerHTML = this.querySelector("p").innerHTML;
-
-            });
-
-        });
-
-
     }, [])
 
     return (
@@ -386,14 +211,14 @@ const Customizer = () => {
 
                     <div className="col-xs-12 col-sm-7 col-md-7 col-lg-7" ref={imgContainerRef}>
                         <div className="big_img">
-                            <Image id="imgStrap" width={524} height={574} src="/images/customizer/straps/strap_black_black.png" style={{ zIndex: 1 }} alt="Picture of the author" />
+                            <Image id="imgStrap" width={524} height={574} src={findImage(strapOptions, selection.strapId)} style={{ zIndex: 1 }} alt="Picture of the author" />
                             <Image id="imgCase"
                                 width={524}
                                 height={574}
-                                src="/images/customizer/case/case-black.png"
+                                src={findImage(caseOptions, selection.caseId)}
                                 style={{ zIndex: 2 }}
                                 alt="Picture of the author" />
-                            <Image id="imgDial" width={524} height={574} src="/images/customizer/dial/dial-black.png" style={{ zIndex: 3 }} alt="Picture of the author" />
+                            <Image id="imgDial" width={524} height={574} src={findImage(dialOptions, selection.dialId)} style={{ zIndex: 3 }} alt="Picture of the author" />
 
 
                         </div>
@@ -421,8 +246,7 @@ const Customizer = () => {
                                         min="0"
                                         max="2"
                                         step="1"
-                                        value={step}
-                                        onChange={(e) => setStep(Number(e.target.value))}
+                                        defaultValue={0}
                                     />
 
                                 </div>
@@ -434,12 +258,12 @@ const Customizer = () => {
 
 
                                             {caseOptions.map((caseItem) => (
-                                                <div className="salect select_1" key={caseItem.name}>
+                                                <div className={`salect select_1${selection.caseId === caseItem.id ? ' active' : ''}`} key={caseItem.id}>
                                                     <a
                                                         href="#"
                                                         className="case-option"
                                                         data-image={caseItem.image}
-                                                        onClick={(e) => e.preventDefault()}
+                                                        onClick={selectOption('caseId', caseItem)}
                                                     >
                                                         <Image
                                                             width={160}
@@ -459,12 +283,12 @@ const Customizer = () => {
                                     <div className="tab-pane fade">
                                         <div className="salect_main">
                                             {dialOptions.map((dial) => (
-                                                <div className="salect select_1" key={dial.name}>
+                                                <div className={`salect select_1${selection.dialId === dial.id ? ' active' : ''}`} key={dial.id}>
                                                     <a
                                                         href="#"
                                                         className="dial-option"
                                                         data-image={dial.image}
-                                                        onClick={(e) => e.preventDefault()}
+                                                        onClick={selectOption('dialId', dial)}
                                                     >
                                                         <Image
                                                             width={160}
@@ -484,13 +308,13 @@ const Customizer = () => {
                                     <div className="tab-pane fade">
                                         <div className="salect_main">
 
-                                            {strapOptions.map((strap, index) => (
-                                                <div className="salect select_1" key={index}>
+                                            {strapOptions.map((strap) => (
+                                                <div className={`salect select_1${selection.strapId === strap.id ? ' active' : ''}`} key={strap.id}>
                                                     <a
                                                         href="#"
                                                         className="band-option"
                                                         data-image={strap.image}
-                                                        onClick={(e) => e.preventDefault()}
+                                                        onClick={selectOption('strapId', strap)}
                                                     >
                                                         <Image
                                                             src={strap.image}
@@ -512,7 +336,13 @@ const Customizer = () => {
                                     <a href="javascript:void(0)" id="nextBtn">Next</a>
                                 </div>
                                 <div className="addtocart">
-                                    <Link href="/cart" >Add To Cart</Link>
+                                    <button
+                                        type="button"
+                                        data-opens-cart
+                                        onClick={() => addToCart({ kind: 'custom', productId: 'custom-watch', options: selection })}
+                                    >
+                                        Add To Cart
+                                    </button>
                                 </div>
                             </div>
                         </div>

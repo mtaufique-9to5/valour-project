@@ -10,6 +10,10 @@ const slugs = [
   "eclipse-black",
 ];
 
+// Only the slugs above exist; anything else renders not-found.jsx instead of
+// failing static path generation (required behaviour with output: 'export').
+export const dynamicParams = false;
+
 export function generateStaticParams() {
   return slugs.map((slug) => ({ slug }));
 }

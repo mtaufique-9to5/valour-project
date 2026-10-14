@@ -3,19 +3,24 @@ import React, { useEffect, useState, useRef } from 'react';
 import "@fancyapps/ui/dist/fancybox/fancybox.css";
 import { Fancybox } from '@fancyapps/ui';
 import SplitType from 'split-type';
-import Link from 'next/link';
 import { useSelector } from 'react-redux';
+import { useRouter } from 'next/navigation';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import "../app/our-shop/shop.css"
+import { getUnitPrice } from '@/data/catalog';
+import { formatPrice } from '@/app/features/cart/cartFormat';
+import { useAddToCart } from '@/app/features/cart/useCartActions';
 
 const ProductDetails = () => {
     const [activeImage, setActiveImage] = useState(1);
     const [selectedImage, setSelectedImage] = useState();
     const [selectedEdition, setSelectedEdition] = useState('17/100');
     const allProducts = useSelector((state) => state.product.value)
+    const router = useRouter();
+    const addToCart = useAddToCart();
 
     const sectionRef = useRef(null);
     const titleRef = useRef(null);
@@ -32,7 +37,6 @@ const ProductDetails = () => {
         name: 'Sunseeker Yellow',
         subtitle: 'P-01 • Automatic Collection',
         tagline: 'Engineered for Everyday Adventure',
-        price: 3200,
         description: [
             {
                 text: 'The ',
@@ -279,15 +283,6 @@ const ProductDetails = () => {
 
 
 
-    const formatPrice = (price) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 0
-        }).format(price);
-    };
-
-
     useEffect(() => {
         Fancybox.bind("[data-fancybox]", {
         });
@@ -401,13 +396,13 @@ const ProductDetails = () => {
                                 </div>
 
                                 {/* Add to Cart Button */}
-                                <Link href="/cart" className="add-to-cart-btn" ref={buttonRef}>
+                                <button type="button" className="add-to-cart-btn" ref={buttonRef} data-opens-cart onClick={() => addToCart({ kind: 'watch', productId: 1 })}>
                                     <span>Add to cart</span>
                                     <span style={{ display: 'flex', alignItems: 'center' }}>
                                         <span className="btn-divider"></span>
-                                        <span className="btn-price">{formatPrice(product.price)}</span>
+                                        <span className="btn-price">{formatPrice(getUnitPrice('watch', 1))}</span>
                                     </span>
-                                </Link>
+                                </button>
 
                                 <div className="mobile-spacer d-block d-md-none"></div>
                             </div>
@@ -482,7 +477,7 @@ const ProductDetails = () => {
                                     <div
                                         className="ht-card"
                                         // onClick={() => handleCart(watch)}
-                                        onClick={() => router.push("/product-details")}
+                                        onClick={() => router.push(`/our-shop/${watch.slug}`)}
                                     >
                                         <div className="ht-card-inner">
                                             <div className="ht-card-glow" />
