@@ -4,9 +4,9 @@
 // product category ("watch" | "strap"), and a watch's movement lives in
 // `movement`. Products carry no price: getUnitPrice() / getProductPrice() only
 // return values from CONFIRMED_PRICES, and anything without a confirmed price
-// is shown as "Price on request". Watches are unconfirmed; straps are a
-// confirmed $45.00 each. Customizer options (case / dial / strap) and the
-// "Custom Watch" they build live here too, also unpriced until confirmed.
+// is shown as "Price on request". The six standard watches are a confirmed
+// $525.00 each and straps $45.00 each. Customizer options (case / dial / strap)
+// and the "Custom Watch" they build live here too, unpriced until confirmed.
 
 const watchData = [
   {
@@ -518,10 +518,13 @@ export const getLineLayers = (kind, options) => {
   return [strapOption.image, caseOption.image, dialOption.image];
 };
 
-// Confirmed unit prices in USD, keyed by kind then product id. Empty until the
-// business confirms pricing — add e.g. `watch: { 1: 1234 }` here and nowhere else.
+// Confirmed unit prices in USD, keyed by kind then product id. This is the only
+// price source; a product missing here is "Price on request".
 export const CONFIRMED_PRICES = {
-  watch: {},
+  // Confirmed by Valour: the six standard watches are $525.00 each. Listed by id
+  // so a newly added watch is never priced by accident.
+  watch: { 1: 525, 2: 525, 3: 525, 4: 525, 5: 525, 6: 525 },
+  // No confirmed price for a customized watch.
   custom: {},
   // Confirmed by Valour: every strap is $45.00.
   strap: Object.fromEntries(straps.map((strap) => [strap.id, 45])),

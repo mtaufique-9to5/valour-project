@@ -150,24 +150,25 @@ describe('lookups', () => {
 })
 
 describe('pricing', () => {
-  test('CONFIRMED_PRICES is the only source: straps 45, watches and the custom watch unpriced', () => {
+  test('CONFIRMED_PRICES is the only source: six watches 525, straps 45, the custom watch unpriced', () => {
     assert.deepEqual(Object.keys(CONFIRMED_PRICES).sort(), ['custom', 'strap', 'watch'])
-    assert.deepEqual(CONFIRMED_PRICES.watch, {})
+    assert.deepEqual(CONFIRMED_PRICES.watch, { 1: 525, 2: 525, 3: 525, 4: 525, 5: 525, 6: 525 })
     assert.deepEqual(CONFIRMED_PRICES.custom, {})
     for (const s of straps) assert.equal(getProductPrice(s), 45)
-    for (const w of watches) assert.equal(getProductPrice(w), null)
+    for (const w of watches) assert.equal(getProductPrice(w), 525, w.slug)
     assert.equal(getUnitPrice('custom', 'custom-watch'), null)
     assert.equal(getProductPrice(undefined), null)
   })
 
   test('getProductPrice follows CONFIRMED_PRICES rather than any product field', () => {
     const watch = getProductBySlug('astral-blue')
+    const original = CONFIRMED_PRICES.watch
     CONFIRMED_PRICES.watch = { [watch.productId]: 1234 }
     try {
       assert.equal(getProductPrice(watch), 1234)
       assert.equal(getProductPrice(getProductBySlug('sunseeker-yellow')), null)
     } finally {
-      CONFIRMED_PRICES.watch = {}
+      CONFIRMED_PRICES.watch = original
     }
   })
 })
@@ -194,7 +195,7 @@ describe('saved-cart compatibility', () => {
     const state = run(hydrateCart(loadCart()))
     assert.deepEqual(state.lines.map((l) => [l.lineId, l.quantity]), [['watch:1', 2], ['strap:1', 3], ['custom:custom-watch|caseId=gold,dialId=mint,strapId=grey-teal', 1]])
     const lines = selectCartLines({ cart: state })
-    assert.deepEqual(lines.map((l) => [l.name, l.unitPrice]), [['Sunseeker Yellow', null], ['Black Strap', 45], ['Custom Watch', null]])
+    assert.deepEqual(lines.map((l) => [l.name, l.unitPrice]), [['Sunseeker Yellow', 525], ['Black Strap', 45], ['Custom Watch', null]])
     // Saving writes back exactly the same format.
     saveCart(state.lines)
     assert.deepEqual(JSON.parse(store.get(CART_STORAGE_KEY)), saved)

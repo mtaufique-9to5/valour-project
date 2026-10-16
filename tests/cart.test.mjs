@@ -39,6 +39,9 @@ import {
 import { PRICE_ON_REQUEST, formatBadgeCount, formatPrice, getTotalLabels } from '../src/app/features/cart/cartFormat.js'
 
 const [W1, W2] = watches.map((w) => w.id)
+// Tests that try other prices restore the real (confirmed) ones afterwards.
+const CONFIRMED_WATCH_PRICES = { ...CONFIRMED_PRICES.watch }
+const restoreWatchPrices = () => { CONFIRMED_PRICES.watch = { ...CONFIRMED_WATCH_PRICES } }
 const CUSTOM = 'custom-watch'
 const CONFIG_A = { caseId: 'black', dialId: 'mint', strapId: 'grey-grey' }
 const CONFIG_B = { caseId: 'gold', dialId: 'light-blue', strapId: 'grey-teal' }
@@ -148,24 +151,24 @@ describe('hydration', () => {
 })
 
 describe('pricing selectors', () => {
-  afterEach(() => { CONFIRMED_PRICES.watch = {} })
+  afterEach(restoreWatchPrices)
 
-  test('watches have no confirmed price: shown as unpriced, never 499 or 3200', () => {
+  test('standard watches use the confirmed $525 (never the old 499 / 3200) and multiply by quantity', () => {
     const state = root(run(addItem({ kind: 'watch', productId: W1, quantity: 2 })))
     const [line] = selectCartLines(state)
-    assert.equal(line.unitPrice, null)
-    assert.equal(line.lineTotal, null)
-    assert.equal(selectSubtotal(state), 0)
-    assert.equal(selectHasUnpricedItems(state), true)
-    assert.equal(selectHasPricedItems(state), false)
+    assert.equal(line.unitPrice, 525)
+    assert.equal(line.lineTotal, 1050)
+    assert.equal(selectSubtotal(state), 1050)
+    assert.equal(selectHasUnpricedItems(state), false)
+    assert.equal(selectHasPricedItems(state), true)
     assert.equal(selectCartCount(state), 2)
   })
 
   test('prices stored with a line are ignored (tampering)', () => {
     const state = root(run(hydrateCart([{ kind: 'watch', productId: W1, quantity: 1, price: 1, unitPrice: 1, lineTotal: 1 }])))
     const [line] = selectCartLines(state)
-    assert.equal(line.unitPrice, null)
-    assert.equal(selectSubtotal(state), 0)
+    assert.equal(line.unitPrice, 525)
+    assert.equal(selectSubtotal(state), 525)
   })
 
   test('confirmed prices drive line totals and subtotal; unpriced lines are excluded', () => {
@@ -222,7 +225,7 @@ describe('display formatting', () => {
       const labels = getTotalLabels({ subtotal: selectSubtotal(state), hasPricedItems: selectHasPricedItems(state), hasUnpricedItems: selectHasUnpricedItems(state) })
       assert.deepEqual(labels, { subtotal: '$500.00', total: PRICE_ON_REQUEST, excludesUnpriced: true })
     } finally {
-      CONFIRMED_PRICES.watch = {}
+      restoreWatchPrices()
     }
   })
 
@@ -552,9 +555,9 @@ describe('Straps: catalog, $45.00 price and cart behaviour', () => {
     assert.equal(getStrapBySlug('nope'), undefined)
   })
 
-  test('every strap costs exactly 45; watches and the custom watch stay unpriced', () => {
+  test('every strap costs exactly 45; watches 525; the custom watch stays unpriced', () => {
     for (const s of straps) assert.equal(getUnitPrice('strap', s.id), 45)
-    for (const w of watches) assert.equal(getUnitPrice('watch', w.id), null)
+    for (const w of watches) assert.equal(getUnitPrice('watch', w.id), 525)
     assert.equal(getUnitPrice('custom', CUSTOM), null)
     assert.equal(formatPrice(getUnitPrice('strap', S1)), '$45.00')
   })
@@ -600,7 +603,7 @@ describe('Straps: catalog, $45.00 price and cart behaviour', () => {
     assert.deepEqual(labels, { subtotal: '$135.00', total: '$135.00 USD', excludesUnpriced: false })
   })
 
-  test('mixed with a watch and a custom watch: subtotal is the straps only, total stays on request', () => {
+  test('mixed with a watch and a custom watch: subtotal is strap + watch, total stays on request', () => {
     const state = root(run(
       addItem({ kind: 'strap', productId: S1 }),
       addItem({ kind: 'watch', productId: W1 }),
@@ -608,7 +611,19 @@ describe('Straps: catalog, $45.00 price and cart behaviour', () => {
     ))
     assert.equal(selectCartCount(state), 3)
     const labels = getTotalLabels({ subtotal: selectSubtotal(state), hasPricedItems: selectHasPricedItems(state), hasUnpricedItems: selectHasUnpricedItems(state) })
-    assert.deepEqual(labels, { subtotal: '$45.00', total: PRICE_ON_REQUEST, excludesUnpriced: true })
+    assert.deepEqual(labels, { subtotal: '$570.00', total: PRICE_ON_REQUEST, excludesUnpriced: true })
+  })
+
+  test('watches and straps only: real subtotal and total, quantities multiplied', () => {
+    const state = root(run(
+      addItem({ kind: 'watch', productId: W1, quantity: 2 }),
+      addItem({ kind: 'watch', productId: W2 }),
+      addItem({ kind: 'strap', productId: S1, quantity: 3 }),
+    ))
+    assert.equal(selectSubtotal(state), 2 * 525 + 525 + 3 * 45)
+    const labels = getTotalLabels({ subtotal: selectSubtotal(state), hasPricedItems: selectHasPricedItems(state), hasUnpricedItems: selectHasUnpricedItems(state) })
+    assert.deepEqual(labels, { subtotal: '$1,710.00', total: '$1,710.00 USD', excludesUnpriced: false })
+    assert.equal(formatPrice(getUnitPrice('watch', W1)), '$525.00')
   })
 
   test('a price stored with a strap line is ignored', () => {
