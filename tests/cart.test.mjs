@@ -29,8 +29,11 @@ import {
   describeOptions,
   getCatalogItem,
   getLineLayers,
+  getRelatedStraps,
+  getStrapBySlug,
   getUnitPrice,
   validateOptions,
+  straps,
   watches,
 } from '../src/data/catalog.js'
 import { PRICE_ON_REQUEST, formatBadgeCount, formatPrice, getTotalLabels } from '../src/app/features/cart/cartFormat.js'
@@ -107,7 +110,7 @@ describe('cart identity and quantities', () => {
     const state = run(
       addItem({ kind: 'watch', productId: 9999 }),
       addItem({ kind: 'watch', productId: String(W1) }),
-      addItem({ kind: 'strap', productId: W1 }),
+      addItem({ kind: 'bracelet', productId: W1 }),
       addItem({ kind: 'constructor', productId: W1 }),
       addItem({ kind: 'watch', productId: W1, options: ['x'] }),
       addItem({ kind: 'watch', productId: W1, options: { nested: { a: 1 } } }),
@@ -193,8 +196,8 @@ describe('pricing selectors', () => {
 describe('display formatting', () => {
   test('formatPrice shows "Price on request" for unpriced items', () => {
     assert.equal(formatPrice(null), PRICE_ON_REQUEST)
-    assert.equal(formatPrice(1250), '$1,250')
-    assert.equal(formatPrice(0), '$0')
+    assert.equal(formatPrice(1250), '$1,250.00')
+    assert.equal(formatPrice(0), '$0.00')
   })
 
   test('all unpriced: no number anywhere', () => {
@@ -204,12 +207,12 @@ describe('display formatting', () => {
 
   test('mixed: subtotal is the priced sum (flagged), total stays "Price on request"', () => {
     assert.deepEqual(getTotalLabels({ subtotal: 750, hasPricedItems: true, hasUnpricedItems: true }),
-      { subtotal: '$750', total: PRICE_ON_REQUEST, excludesUnpriced: true })
+      { subtotal: '$750.00', total: PRICE_ON_REQUEST, excludesUnpriced: true })
   })
 
   test('all priced: real subtotal and total', () => {
     assert.deepEqual(getTotalLabels({ subtotal: 1500, hasPricedItems: true, hasUnpricedItems: false }),
-      { subtotal: '$1,500', total: '$1,500 USD', excludesUnpriced: false })
+      { subtotal: '$1,500.00', total: '$1,500.00 USD', excludesUnpriced: false })
   })
 
   test('labels match the selectors end to end', () => {
@@ -217,7 +220,7 @@ describe('display formatting', () => {
     try {
       const state = root(run(addItem({ kind: 'watch', productId: W1, quantity: 2 }), addItem({ kind: 'watch', productId: W2 })))
       const labels = getTotalLabels({ subtotal: selectSubtotal(state), hasPricedItems: selectHasPricedItems(state), hasUnpricedItems: selectHasUnpricedItems(state) })
-      assert.deepEqual(labels, { subtotal: '$500', total: PRICE_ON_REQUEST, excludesUnpriced: true })
+      assert.deepEqual(labels, { subtotal: '$500.00', total: PRICE_ON_REQUEST, excludesUnpriced: true })
     } finally {
       CONFIRMED_PRICES.watch = {}
     }
@@ -313,7 +316,7 @@ describe('Step 3: catalog options and custom watches', () => {
       assert.doesNotThrow(() => validateOptions('custom', CUSTOM, bad))
       assert.equal(validateOptions('custom', CUSTOM, bad), false)
     }
-    assert.equal(validateOptions('strap', 1, {}), false, 'unsupported kind')
+    assert.equal(validateOptions('bracelet', 1, {}), false, 'unsupported kind')
   })
 
   test('describeOptions and getLineLayers', () => {
@@ -352,7 +355,7 @@ describe('Step 3: catalog options and custom watches', () => {
       addItem({ kind: 'watch', productId: W1 }),
       addItem({ kind: 'custom', productId: CUSTOM, options: CONFIG_A }),
     )))
-    assert.equal(watch.href, `/our-shop/${watches[0].slug}`)
+    assert.equal(watch.href, `/our-shop/${watches[0].slug}/`)
     assert.deepEqual(watch.optionLabels, [])
     assert.equal(watch.layers, null)
     assert.equal(custom.name, 'Custom Watch')
@@ -392,7 +395,7 @@ describe('Step 3: getAddOutcome', () => {
       { kind: 'watch', productId: W1, quantity: 0 },
       { kind: 'watch', productId: W1, options: { caseId: 'black' } },
       { kind: 'custom', productId: CUSTOM, options: { caseId: 'black' } },
-      { kind: 'strap', productId: 1 },
+      { kind: 'bracelet', productId: 1 },
     ]) {
       assert.deepEqual(getAddOutcome([], payload), { outcome: 'invalid', lineId: null }, JSON.stringify(payload))
     }
@@ -534,5 +537,110 @@ describe('F-12: sidebar notice', () => {
     const s = run2(toggleCartSidebar(true), showCartNotice({ type: 'success', text: 'x' }), toggleCartSidebar(false))
     assert.equal(s.notice, null)
     assert.equal(s.value, false)
+  })
+})
+
+describe('Straps: catalog, $45.00 price and cart behaviour', () => {
+  const S1 = straps[0].id
+  const S2 = straps[1].id
+
+  test('six straps with the approved names, slugs and existing images, in catalog order', () => {
+    assert.deepEqual(straps.map((s) => s.name), ['Black Strap', 'Blue Strap', 'Yellow Strap', 'Silver Strap', 'Red Strap', 'Grey Strap'])
+    assert.deepEqual(straps.map((s) => s.slug), ['black', 'blue', 'yellow', 'silver', 'red', 'grey'])
+    assert.deepEqual(straps.map((s) => s.image), [1, 2, 3, 4, 5, 6].map((n) => `/images/strap-${n}.png`))
+    assert.equal(getStrapBySlug('grey').name, 'Grey Strap')
+    assert.equal(getStrapBySlug('nope'), undefined)
+  })
+
+  test('every strap costs exactly 45; watches and the custom watch stay unpriced', () => {
+    for (const s of straps) assert.equal(getUnitPrice('strap', s.id), 45)
+    for (const w of watches) assert.equal(getUnitPrice('watch', w.id), null)
+    assert.equal(getUnitPrice('custom', CUSTOM), null)
+    assert.equal(formatPrice(getUnitPrice('strap', S1)), '$45.00')
+  })
+
+  test('related straps are the next four in catalog order, wrapping, never the current one', () => {
+    assert.deepEqual(getRelatedStraps(1).map((s) => s.slug), ['blue', 'yellow', 'silver', 'red'])
+    assert.deepEqual(getRelatedStraps(5).map((s) => s.slug), ['grey', 'black', 'blue', 'yellow'])
+    assert.deepEqual(getRelatedStraps(6).map((s) => s.slug), ['black', 'blue', 'yellow', 'silver'])
+    for (const s of straps) assert.ok(!getRelatedStraps(s.id).some((r) => r.id === s.id))
+  })
+
+  test('each strap has its own stable cart identity; options are rejected', () => {
+    assert.equal(makeLineId('strap', S1), 'strap:1')
+    assert.notEqual(makeLineId('strap', S1), makeLineId('watch', S1))
+    assert.equal(validateOptions('strap', S1, {}), true)
+    assert.equal(validateOptions('strap', S1, { color: 'red' }), false)
+    assert.equal(getAddOutcome([], { kind: 'strap', productId: 99 }).outcome, 'invalid')
+    assert.equal(getAddOutcome([], { kind: 'strap', productId: '1' }).outcome, 'invalid')
+  })
+
+  test('the same strap merges, different straps stay separate, max 10', () => {
+    let state = run(addItem({ kind: 'strap', productId: S1 }), addItem({ kind: 'strap', productId: S1 }), addItem({ kind: 'strap', productId: S2 }))
+    assert.deepEqual(state.lines.map((l) => [l.lineId, l.quantity]), [['strap:1', 2], ['strap:2', 1]])
+    state = run(addItem({ kind: 'strap', productId: S1, quantity: 9 }), addItem({ kind: 'strap', productId: S1, quantity: 5 }))
+    assert.equal(state.lines[0].quantity, MAX_LINE_QUANTITY)
+    assert.equal(getAddOutcome(state.lines, { kind: 'strap', productId: S1 }).outcome, 'max')
+  })
+
+  test('strap lines show name, image, $45 unit price, line total and their strap page', () => {
+    const [line] = selectCartLines(root(run(addItem({ kind: 'strap', productId: S2, quantity: 3 }))))
+    assert.equal(line.name, 'Blue Strap')
+    assert.equal(line.image, '/images/strap-2.png')
+    assert.equal(line.href, '/our-shop/blue/')
+    assert.equal(line.unitPrice, 45)
+    assert.equal(line.lineTotal, 135)
+    assert.deepEqual(line.optionLabels, [])
+    assert.equal(line.layers, null)
+  })
+
+  test('straps only: real subtotal and total', () => {
+    const state = root(run(addItem({ kind: 'strap', productId: S1, quantity: 2 }), addItem({ kind: 'strap', productId: S2 })))
+    const labels = getTotalLabels({ subtotal: selectSubtotal(state), hasPricedItems: selectHasPricedItems(state), hasUnpricedItems: selectHasUnpricedItems(state) })
+    assert.deepEqual(labels, { subtotal: '$135.00', total: '$135.00 USD', excludesUnpriced: false })
+  })
+
+  test('mixed with a watch and a custom watch: subtotal is the straps only, total stays on request', () => {
+    const state = root(run(
+      addItem({ kind: 'strap', productId: S1 }),
+      addItem({ kind: 'watch', productId: W1 }),
+      addItem({ kind: 'custom', productId: CUSTOM, options: CONFIG_A }),
+    ))
+    assert.equal(selectCartCount(state), 3)
+    const labels = getTotalLabels({ subtotal: selectSubtotal(state), hasPricedItems: selectHasPricedItems(state), hasUnpricedItems: selectHasUnpricedItems(state) })
+    assert.deepEqual(labels, { subtotal: '$45.00', total: PRICE_ON_REQUEST, excludesUnpriced: true })
+  })
+
+  test('a price stored with a strap line is ignored', () => {
+    const [line] = selectCartLines(root(run(hydrateCart([{ kind: 'strap', productId: S1, quantity: 1, price: 1, unitPrice: 1 }]))))
+    assert.equal(line.unitPrice, 45)
+  })
+
+  describe('persistence', () => {
+    let store
+    beforeEach(() => {
+      store = new Map()
+      globalThis.localStorage = {
+        getItem: (k) => (store.has(k) ? store.get(k) : null),
+        setItem: (k, v) => store.set(k, String(v)),
+        removeItem: (k) => store.delete(k),
+      }
+    })
+    afterEach(() => { delete globalThis.localStorage })
+
+    test('strap lines save as references and survive a reload next to existing watch/custom lines', () => {
+      // A cart saved before straps existed still loads unchanged.
+      store.set(CART_STORAGE_KEY, JSON.stringify({ version: 1, lines: [
+        { kind: 'watch', productId: W1, options: {}, quantity: 1 },
+        { kind: 'custom', productId: CUSTOM, options: CONFIG_A, quantity: 1 },
+      ] }))
+      let state = run(hydrateCart(loadCart()))
+      assert.equal(state.lines.length, 2)
+      state = reducer(state, addItem({ kind: 'strap', productId: S1, quantity: 2 }))
+      saveCart(state.lines)
+      const saved = JSON.parse(store.get(CART_STORAGE_KEY))
+      assert.deepEqual(saved.lines[2], { kind: 'strap', productId: S1, options: {}, quantity: 2 })
+      assert.deepEqual(run(hydrateCart(loadCart())).lines, state.lines)
+    })
   })
 })

@@ -1,0 +1,195 @@
+/* Strap layout: banner, gallery and info column. Everything is scoped under
+   .strap-page — no html/body or other global rules, so nothing here can affect
+   other pages (including the watch page's scrolling) once loaded. */
+.strap-page {
+    --pd-bg: #000;
+    --pd-panel: #0a0a0a;
+    --pd-line: rgba(255, 255, 255, 0.1);
+    --pd-text: #fff;
+    --pd-muted: #a3a3a3;
+    --strap-glow: rgba(255, 255, 255, 0.06);
+    background: var(--pd-bg);
+    color: var(--pd-text);
+    font-family: Poppins, sans-serif;
+}
+
+/* A faint tint of the strap's own colour behind its photo. */
+.strap-page .black { --strap-glow: rgba(255, 255, 255, 0.06); }
+.strap-page .blue { --strap-glow: rgba(125, 190, 240, 0.14); }
+.strap-page .yellow { --strap-glow: rgba(235, 200, 60, 0.13); }
+.strap-page .silver { --strap-glow: rgba(220, 220, 220, 0.11); }
+.strap-page .red { --strap-glow: rgba(225, 50, 70, 0.14); }
+.strap-page .grey { --strap-glow: rgba(150, 160, 130, 0.13); }
+
+.strap-eyebrow {
+    font-family: "Orbitron", sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--pd-muted);
+    margin: 0 0 0.75rem;
+}
+
+/* ── Banner ── */
+.strap-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 9rem 0 4rem;
+    border-bottom: 1px solid var(--pd-line);
+    background: radial-gradient(ellipse 60% 70% at 72% 55%, var(--strap-glow), transparent 70%), var(--pd-bg);
+}
+
+.strap-hero-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3rem;
+    min-height: 60vh;
+}
+
+.strap-hero-text {
+    flex: 1 1 50%;
+}
+
+.strap-hero-title {
+    font-family: Times New Roman, Times, serif;
+    font-weight: 600;
+    font-size: clamp(3rem, 7vw, 6.5rem);
+    line-height: 1;
+    letter-spacing: 0.01em;
+    margin: 0 0 1.25rem;
+    color: var(--pd-text);
+}
+
+.strap-hero-sub {
+    font-size: 0.85rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--pd-muted);
+    margin: 0;
+}
+
+.strap-hero-image {
+    flex: 1 1 50%;
+    display: flex;
+    justify-content: center;
+}
+
+.strap-hero-image img {
+    width: auto;
+    max-width: 100%;
+    max-height: 62vh;
+    object-fit: contain;
+    filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.6));
+}
+
+/* ── Details ── */
+.strap-details {
+    padding: 6rem 0;
+}
+
+.strap-gallery {
+    background: radial-gradient(circle at 50% 45%, var(--strap-glow), transparent 65%), linear-gradient(to bottom, #111, var(--pd-panel));
+    border: 1px solid var(--pd-line);
+    border-radius: 1rem;
+    aspect-ratio: 4 / 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+}
+
+.strap-gallery img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.strap-info {
+    max-width: 34rem;
+}
+
+.strap-name {
+    font-family: Times New Roman, Times, serif;
+    font-weight: 600;
+    font-size: clamp(2.25rem, 4vw, 3.25rem);
+    line-height: 1.05;
+    margin: 0 0 1rem;
+    color: var(--pd-text);
+}
+
+.strap-price {
+    font-size: 1.5rem;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    margin: 0;
+}
+
+.strap-divider {
+    display: block;
+    width: 3rem;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.45);
+    margin: 1.75rem 0;
+}
+
+.strap-description {
+    font-size: 0.95rem;
+    font-weight: 300;
+    line-height: 1.8;
+    color: #d4d4d4;
+    margin: 0 0 2.5rem;
+}
+
+.strap-page .strap-add-btn {
+    width: 100%;
+    padding: 1rem 2rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+}
+
+.strap-page .strap-details a:focus-visible,
+.strap-page .strap-details button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 4px;
+}
+
+@media (max-width: 991.98px) {
+    .strap-hero {
+        padding: 7.5rem 0 3rem;
+    }
+
+    .strap-hero-inner {
+        min-height: 0;
+    }
+
+    .strap-details {
+        padding: 4rem 0;
+    }
+
+    .strap-info {
+        max-width: none;
+    }
+
+    .strap-gallery {
+        max-width: 32rem;
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .strap-hero-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2rem;
+    }
+
+    .strap-hero-image {
+        width: 100%;
+    }
+
+    .strap-hero-image img {
+        max-height: 44vh;
+    }
+}

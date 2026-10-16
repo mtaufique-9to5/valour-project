@@ -8,7 +8,7 @@ const shop = () => {
   return (
     <>
       <Header />
-      <ProGrid />
+      <ProGrid /> 
       <Footer />
     </>
   )

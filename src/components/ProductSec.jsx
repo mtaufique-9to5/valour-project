@@ -10,6 +10,7 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import Link from 'next/link'
 import { useSelector } from 'react-redux'
+import { getProductHref } from '@/app/features/product/productUrl'
 
 
 gsap.registerPlugin(ScrollTrigger)
@@ -163,7 +164,7 @@ const ProductSec = () => {
             {products.map((watch, index) => (
               <SwiperSlide>
 
-                <Link href={`/our-shop/${watch.slug}`} className='cards-link'>
+                <Link href={getProductHref(watch)} className='cards-link'>
                   {/* <div className="pro-card">
                     <img src={item.image} alt="watch" />
                     <div className="details">
@@ -230,7 +231,7 @@ const ProductSec = () => {
                         <div className="ht-card-specs">
                           <span>{watch.material}</span>
                           <div className="dot" />
-                          <span>{watch.type}</span>
+                          <span>{watch.movement}</span>
                         </div>
                       </div>
                     </div>

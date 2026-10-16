@@ -1,14 +1,14 @@
 // Single source of truth for everything that can go in the cart.
 //
-// PRICING IS UNRESOLVED. Each watch carries two conflicting legacy fields —
-// `price: 499` (what the cart/checkout mockups were built around) and
-// `pdpPrice: 3200` (never read anywhere). Neither is confirmed, so neither is
-// used for pricing: getUnitPrice() only returns values from CONFIRMED_PRICES,
-// and anything without a confirmed price is shown as "Price on request".
-// Customizer options (case / dial / strap) and the "Custom Watch" they build
-// live here too, also unpriced until confirmed. Straps are not sold separately yet.
+// `products` is the unified collection of watches and straps; `type` is the
+// product category ("watch" | "strap"), and a watch's movement lives in
+// `movement`. Products carry no price: getUnitPrice() / getProductPrice() only
+// return values from CONFIRMED_PRICES, and anything without a confirmed price
+// is shown as "Price on request". Watches are unconfirmed; straps are a
+// confirmed $45.00 each. Customizer options (case / dial / strap) and the
+// "Custom Watch" they build live here too, also unpriced until confirmed.
 
-export const watches = [
+const watchData = [
   {
     id: 1,
     ref: "LUC-01",
@@ -19,8 +19,8 @@ export const watches = [
     detail: "Lucent Collection",
     link: "/product-details",
     collection: "lucent",
-    range: "automatic",
-    type: "automatic",
+    type: "watch",
+    movement: "automatic",
     material: "titanium",
     color: "yellow",
     image: "/images/watch-1.png",
@@ -31,13 +31,11 @@ export const watches = [
     secTitle: "Sunseeker Yellow",
     accent: "#FACC15",
     limited: false,
-    price: 499,
     edition: null,
     quantity: 1,
     pdpSubtitle: "LUC-01 • Automatic Collection",
     tagline: "Engineered for Everyday Adventure",
     detail1: "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
-    pdpPrice: 3200,
     description: [
       { text: "The ", bold: "Sunseeker Yellow", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
       { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Sunseeker Yellow balances bold aesthetics with everyday practicality." },
@@ -76,8 +74,8 @@ export const watches = [
     detail: "Lucent Collection",
     link: "/product-details",
     collection: "lucent",
-    range: "automatic",
-    type: "automatic",
+    type: "watch",
+    movement: "automatic",
     material: "titanium",
     color: "blue",
     image: "/images/watch-2.png",
@@ -88,13 +86,11 @@ export const watches = [
     secTitle: "Astral Blue",
     accent: "#3B82F6",
     limited: false,
-    price: 499,
     edition: null,
     quantity: 1,
     pdpSubtitle: "LUC-06 • Automatic Collection",
     tagline: "Engineered for Everyday Adventure",
     detail1: "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
-    pdpPrice: 3200,
     description: [
       { text: "The ", bold: "Astral Blue", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
       { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Astral Blue balances bold aesthetics with everyday practicality." },
@@ -133,8 +129,8 @@ export const watches = [
     detail: "Lucent Collection",
     link: "/product-details",
     collection: "lucent",
-    range: "automatic",
-    type: "automatic",
+    type: "watch",
+    movement: "automatic",
     material: "titanium",
     color: "mint",
     image: "/images/watch-3.png",
@@ -145,13 +141,11 @@ export const watches = [
     secTitle: "Aurora Mint",
     accent: "#10B981",
     limited: false,
-    price: 499,
     edition: null,
     quantity: 1,
     pdpSubtitle: "LUC-05 • Automatic Collection",
     tagline: "Engineered for Everyday Adventure",
     detail1: "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
-    pdpPrice: 3200,
     description: [
       { text: "The ", bold: "Aurora Mint", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
       { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Aurora Mint balances bold aesthetics with everyday practicality." },
@@ -190,8 +184,8 @@ export const watches = [
     detail: "Lucent Collection",
     link: "/product-details",
     collection: "lucent",
-    range: "automatic",
-    type: "automatic",
+    type: "watch",
+    movement: "automatic",
     material: "titanium",
     color: "red",
     image: "/images/watch-4.png",
@@ -202,13 +196,11 @@ export const watches = [
     secTitle: "Nova Red",
     accent: "#EF4444",
     limited: false,
-    price: 499,
     edition: null,
     quantity: 1,
     pdpSubtitle: "LUC-02 • Automatic Collection",
     tagline: "Engineered for Everyday Adventure",
     detail1: "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
-    pdpPrice: 3200,
     description: [
       { text: "The ", bold: "Nova Red", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
       { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Nova Red balances bold aesthetics with everyday practicality." },
@@ -247,8 +239,8 @@ export const watches = [
     detail: "Lucent Collection",
     link: "/product-details",
     collection: "lucent",
-    range: "automatic",
-    type: "automatic",
+    type: "watch",
+    movement: "automatic",
     material: "titanium",
     color: "silver",
     image: "/images/watch-5.png",
@@ -259,13 +251,11 @@ export const watches = [
     secTitle: "Frost Silver",
     accent: "#D1D5DB",
     limited: false,
-    price: 499,
     edition: null,
     quantity: 1,
     pdpSubtitle: "LUC-03 • Automatic Collection",
     tagline: "Engineered for Everyday Adventure",
     detail1: "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
-    pdpPrice: 3200,
     description: [
       { text: "The ", bold: "Frost Silver", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
       { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Frost Silver balances bold aesthetics with everyday practicality." },
@@ -304,8 +294,8 @@ export const watches = [
     detail: "Lucent Collection",
     link: "/product-details",
     collection: "lucent",
-    range: "automatic",
-    type: "automatic",
+    type: "watch",
+    movement: "automatic",
     material: "titanium",
     color: "black",
     image: "/images/watch-6.png",
@@ -316,13 +306,11 @@ export const watches = [
     secTitle: "Eclipse Black",
     accent: "#111827",
     limited: false,
-    price: 499,
     edition: null,
     quantity: 1,
     pdpSubtitle: "LUC-04 • Automatic Collection",
     tagline: "Engineered for Everyday Adventure",
     detail1: "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
-    pdpPrice: 3200,
     description: [
       { text: "The ", bold: "Eclipse Black", suffix: " embodies the spirit of exploration and optimism, combining contemporary design with dependable Swiss-inspired craftsmanship." },
       { text: "Built with a lightweight ", bold: "titanium case", suffix: " and powered by a precision ", bold2: "automatic movement", suffix2: ", it delivers exceptional reliability and smooth performance for every occasion.", bold3: "Designed for modern lifestyles", suffix3: ", Eclipse Black balances bold aesthetics with everyday practicality." },
@@ -395,9 +383,91 @@ export const DEFAULT_CUSTOM_OPTIONS = { caseId: "black", dialId: "black", strapI
 
 export const customWatch = { id: "custom-watch", name: "Custom Watch" };
 
+// Copy shared by every strap, as supplied by Valour.
+export const STRAP_DESCRIPTION =
+  "This hybrid sailcloth/FKM rubber strap is an original design that combines durability and comfort. Each comes equipped with a curved lug end to seamlessly integrate with Valour’s watch cases. The loopless design ensures a clean and streamlined look, emphasizing the light and sporty look of the collections. Each pair of straps also comes equipped with quick-release spring bars, making strap changes quick and convenient.";
+
+export const STRAP_SPECS = [
+  { label: "Strap Length", value: "100 MM (point side), 100 MM (buckle/clasp side)" },
+  { label: "Strap Width", value: "20 MM / 18 MM" },
+  { label: "Strap Material", value: "Hybrid Sailcloth / FKM Rubber Strap" },
+  { label: "Deployant", value: "Loopless-Style Twin Trigger Clasp" },
+  { label: "Lug Attachment", value: "Quick-release Springbars" }
+];
+
+// Straps sold on their own. Ids and slugs are stable (stored in carts, used in
+// URLs); array order is catalog order, which Related Straps follows. One photo each.
+const strapData = [
+  { id: 1, type: "strap", ref: "P-1", slug: "black", color: "black", name: "Black Strap", image: "/images/strap-1.png" },
+  { id: 2, type: "strap", ref: "P-2", slug: "blue", color: "blue", name: "Blue Strap", image: "/images/strap-2.png" },
+  { id: 3, type: "strap", ref: "P-3", slug: "yellow", color: "yellow", name: "Yellow Strap", image: "/images/strap-3.png" },
+  { id: 4, type: "strap", ref: "P-4", slug: "silver", color: "silver", name: "Silver Strap", image: "/images/strap-4.png" },
+  { id: 5, type: "strap", ref: "P-5", slug: "red", color: "red", name: "Red Strap", image: "/images/strap-5.png" },
+  { id: 6, type: "strap", ref: "P-6", slug: "grey", color: "grey", name: "Grey Strap", image: "/images/strap-6.png" }
+];
+
+export const PRODUCT_TYPES = ["watch", "strap"];
+
+// Throws on anything that would make a product ambiguous: an unknown type, a
+// missing slug, or a key or slug used twice (one product must never silently
+// replace another in lookups or routes). Returns the list unchanged.
+export const assertValidProducts = (list) => {
+  const keys = new Set();
+  const slugs = new Set();
+  for (const product of list) {
+    if (!PRODUCT_TYPES.includes(product.type)) throw new Error(`Unknown product type "${product.type}" for ${product.key}`);
+    if (typeof product.slug !== "string" || !product.slug) throw new Error(`Missing slug for ${product.key}`);
+    if (keys.has(product.key)) throw new Error(`Duplicate product key "${product.key}"`);
+    if (slugs.has(product.slug)) throw new Error(`Duplicate product slug "${product.slug}"`);
+    keys.add(product.key);
+    slugs.add(product.slug);
+  }
+  return list;
+};
+
+// The unified collection, watches then straps. `productId` (= `id`) is the
+// existing per-type id saved in carts; `key` ("watch:1", "strap:1") is unique
+// across all products and matches the cart's line id for an item without options.
+export const products = assertValidProducts(
+  [...watchData, ...strapData].map((item) => ({
+    ...item,
+    productId: item.id,
+    key: `${item.type}:${item.id}`,
+    images: [item.image],
+  }))
+);
+
+export const getProductsByType = (type) => products.filter((product) => product.type === type);
+
+export const getProductBySlug = (slug) =>
+  typeof slug === "string" ? products.find((product) => product.slug === slug) : undefined;
+
+// The next `count` products of the same type after this one, in catalog order,
+// wrapping around; never the product itself.
+export const getRelatedProducts = (product, count = 4) => {
+  const sameType = product ? getProductsByType(product.type) : [];
+  const index = sameType.findIndex((item) => item.key === product.key);
+  if (index === -1) return [];
+  return [...sameType.slice(index + 1), ...sameType.slice(0, index)].slice(0, count);
+};
+
+// Existing per-type views, kept for current consumers (product state, shop
+// grid, cart lookups, strap pages).
+export const watches = getProductsByType("watch");
+export const straps = getProductsByType("strap");
+
+export const getStrapBySlug = (slug) => {
+  const product = getProductBySlug(slug);
+  return product?.type === "strap" ? product : undefined;
+};
+
+export const getRelatedStraps = (strapId, count = 4) =>
+  getRelatedProducts(straps.find((strap) => strap.id === strapId), count);
+
 const CATALOG = {
   watch: watches,
   custom: [customWatch],
+  strap: straps,
 };
 
 // Option key -> its list and display label, in display order (Case, Dial, Strap).
@@ -423,12 +493,12 @@ const resolveCustomOptions = (options) => {
   return resolved;
 };
 
-// Watches take no options; a custom watch needs exactly caseId, dialId and
+// Watches and straps take no options; a custom watch needs exactly caseId, dialId and
 // strapId, each a known id (every combination is allowed). Never throws.
 export const validateOptions = (kind, productId, options) => {
   if (!isPlainObject(options)) return false;
   const keyCount = Object.keys(options).length;
-  if (kind === "watch") return keyCount === 0;
+  if (kind === "watch" || kind === "strap") return keyCount === 0;
   if (kind === "custom") return keyCount === CUSTOM_OPTION_FIELDS.length && resolveCustomOptions(options) !== null;
   return false;
 };
@@ -453,6 +523,8 @@ export const getLineLayers = (kind, options) => {
 export const CONFIRMED_PRICES = {
   watch: {},
   custom: {},
+  // Confirmed by Valour: every strap is $45.00.
+  strap: Object.fromEntries(straps.map((strap) => [strap.id, 45])),
 };
 
 export const getCatalogItem = (kind, productId) =>
@@ -463,3 +535,6 @@ export const getUnitPrice = (kind, productId) => {
   const price = Object.hasOwn(CONFIRMED_PRICES, kind) ? CONFIRMED_PRICES[kind][productId] : undefined;
   return Number.isFinite(price) ? price : null;
 };
+
+// A product's confirmed price (or null), read from CONFIRMED_PRICES like the cart does.
+export const getProductPrice = (product) => (product ? getUnitPrice(product.type, product.productId) : null);

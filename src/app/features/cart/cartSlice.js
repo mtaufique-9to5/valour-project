@@ -6,6 +6,7 @@ import {
   getUnitPrice,
   validateOptions,
 } from '../../../data/catalog.js'
+import { getProductHref } from '../product/productUrl.js'
 
 export const MAX_LINE_QUANTITY = 10
 
@@ -177,7 +178,7 @@ export const selectCartLines = createSelector([selectRawLines], (lines) =>
       edition: item.edition,
       optionLabels: describeOptions(line.kind, line.options),
       layers: getLineLayers(line.kind, line.options),
-      href: line.kind === 'custom' ? '/customizer' : `/our-shop/${item.slug}`,
+      href: line.kind === 'custom' ? '/customizer' : getProductHref(item),
       unitPrice,
       lineTotal: unitPrice === null ? null : unitPrice * line.quantity,
     }]

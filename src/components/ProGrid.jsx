@@ -7,6 +7,14 @@ import 'aos/dist/aos.css';
 import SplitType from "split-type";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
+import { getProductsByType } from "@/data/catalog";
+import { getProductHref } from "@/app/features/product/productUrl";
+import { getPriceLabel } from "@/components/product/ProductPrice";
+
+// Strap cards are built from the catalog. Cards show the short colour name
+// ("Black Strap" -> "Black"); price and link come from the shared helpers.
+const strapProducts = getProductsByType("strap");
+const strapCardName = (product) => product.name.replace(/\s+Strap$/, "");
 
 
 
@@ -110,7 +118,7 @@ export default function HorizonTimepieces() {
   const filteredWatches = products.filter((watch) => {
     return (
       (activeFilters.collection === "all" || watch.collection === activeFilters.collection) &&
-      (activeFilters.type === "all" || watch.type === activeFilters.type) &&
+      (activeFilters.type === "all" || watch.movement === activeFilters.type) &&
       (activeFilters.material === "all" || watch.material === activeFilters.material) &&
       (activeFilters.color === "all" || watch.color === activeFilters.color)
     );
@@ -348,7 +356,7 @@ export default function HorizonTimepieces() {
                 data-id={watch.id}
                 className={`ht-card ${watch.color} ${animatedCards.has(watch.id) ? "animated" : ""}`}
                 style={{ animationDelay: `${index * 80}ms` }}
-                onClick={() => router.push(`/our-shop/${watch.slug}`)}
+                onClick={() => router.push(getProductHref(watch))}
               >
                 <div className="ht-card-inner">
                   <div className="ht-card-glow" />
@@ -398,7 +406,7 @@ export default function HorizonTimepieces() {
                     <div className="ht-card-specs">
                       <span>{watch.material}</span>
                       <div className="dot" />
-                      <span>{watch.type}</span>
+                      <span>{watch.movement}</span>
                     </div>
                   </div>
                 </div>
@@ -410,312 +418,60 @@ export default function HorizonTimepieces() {
         <section className="strap-sec">
           <h4>Straps</h4>
           <div className={`ht-grid`}>
-            <div
-              className={`ht-card black`}
-              onClick={() => router.push("/our-shop/eclipse-black")}
-            >
-              <div className="ht-card-inner">
-                <div className="ht-card-glow" />
+            {strapProducts.map((product) => (
+              <div
+                key={product.key}
+                className={`ht-card ${product.color}`}
+                onClick={() => router.push(getProductHref(product))}
+              >
+                <div className="ht-card-inner">
+                  <div className="ht-card-glow" />
 
-                <div className="ht-image-wrap">
-                  <div className="ht-shimmer" />
-                  <img
-                    src="/images/strap-1.png"
-                    alt="strap"
-                    className="ht-card-img"
-                    loading="lazy"
-                  />
-                  <div className="ht-hover-overlay">
-                    <div className="ht-hover-content">
-                      <div className="ht-hover-line">
-                        <div className="line" />
-                        <span>Explore</span>
+                  <div className="ht-image-wrap">
+                    <div className="ht-shimmer" />
+                    <img
+                      src={product.image}
+                      alt="strap"
+                      className="ht-card-img"
+                      loading="lazy"
+                    />
+                    <div className="ht-hover-overlay">
+                      <div className="ht-hover-content">
+                        <div className="ht-hover-line">
+                          <div className="line" />
+                          <span>Explore</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="ht-card-info">
-                  <div className="ht-card-header">
-                    <div>
-                      <p className="ht-card-ref">P-1</p>
-                      <h3 className="ht-card-name">Black</h3>
-                    </div>
-                    <div className="ht-card-arrow">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="ht-card-subtitle">Lucent Collection</p>
-                  <div className="ht-card-specs">
-                    <span>22mm</span>
-                    <div className="dot" />
-                    <span>Quick Release</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div
-              className={`ht-card blue`}
-              onClick={() => router.push("/our-shop/astral-blue")}
-            >
-              <div className="ht-card-inner">
-                <div className="ht-card-glow" />
-
-                <div className="ht-image-wrap">
-                  <div className="ht-shimmer" />
-                  <img
-                    src="/images/strap-2.png"
-                    alt="strap"
-                    className="ht-card-img"
-                    loading="lazy"
-                  />
-                  <div className="ht-hover-overlay">
-                    <div className="ht-hover-content">
-                      <div className="ht-hover-line">
-                        <div className="line" />
-                        <span>Explore</span>
+                  <div className="ht-card-info">
+                    <div className="ht-card-header">
+                      <div>
+                        <p className="ht-card-ref">{product.ref}</p>
+                        <h3 className="ht-card-name">{strapCardName(product)}</h3>
+                      </div>
+                      <div className="ht-card-arrow">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                <div className="ht-card-info">
-                  <div className="ht-card-header">
-                    <div>
-                      <p className="ht-card-ref">P-2</p>
-                      <h3 className="ht-card-name">Blue</h3>
+                    <div className="ht-card-specs">
+                      {/* Backed by STRAP_SPECS (Lug Attachment: Quick-release Springbars). */}
+                      <span>Quick Release</span>
+                      <div className="dot" />
+                      <span>{getPriceLabel(product)}</span>
                     </div>
-                    <div className="ht-card-arrow">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="ht-card-subtitle">Lucent Collection</p>
-                  <div className="ht-card-specs">
-                    <span>22mm</span>
-                    <div className="dot" />
-                    <span>Quick Release</span>
                   </div>
                 </div>
               </div>
-            </div>
-            <div
-              className={`ht-card yellow`}
-              onClick={() => router.push("/our-shop/sunseeker-yellow")}
-            >
-              <div className="ht-card-inner">
-                <div className="ht-card-glow" />
-
-                <div className="ht-image-wrap">
-                  <div className="ht-shimmer" />
-                  <img
-                    src="/images/strap-3.png"
-                    alt="strap"
-                    className="ht-card-img"
-                    loading="lazy"
-                  />
-                  <div className="ht-hover-overlay">
-                    <div className="ht-hover-content">
-                      <div className="ht-hover-line">
-                        <div className="line" />
-                        <span>Explore</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="ht-card-info">
-                  <div className="ht-card-header">
-                    <div>
-                      <p className="ht-card-ref">P-3</p>
-                      <h3 className="ht-card-name">Yellow</h3>
-                    </div>
-                    <div className="ht-card-arrow">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="ht-card-subtitle">Lucent Collection</p>
-                  <div className="ht-card-specs">
-                    <span>22mm</span>
-                    <div className="dot" />
-                    <span>Quick Release</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div
-              className={`ht-card silver`}
-              onClick={() => router.push("/our-shop/frost-silver")}
-            >
-              <div className="ht-card-inner">
-                <div className="ht-card-glow" />
-
-                <div className="ht-image-wrap">
-                  <div className="ht-shimmer" />
-                  <img
-                    src="/images/strap-4.png"
-                    alt="strap"
-                    className="ht-card-img"
-                    loading="lazy"
-                  />
-                  <div className="ht-hover-overlay">
-                    <div className="ht-hover-content">
-                      <div className="ht-hover-line">
-                        <div className="line" />
-                        <span>Explore</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="ht-card-info">
-                  <div className="ht-card-header">
-                    <div>
-                      <p className="ht-card-ref">P-4</p>
-                      <h3 className="ht-card-name">Silver</h3>
-                    </div>
-                    <div className="ht-card-arrow">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="ht-card-subtitle">Lucent Collection</p>
-                  <div className="ht-card-specs">
-                    <span>22mm</span>
-                    <div className="dot" />
-                    <span>Quick Release</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div
-              className={`ht-card red`}
-              onClick={() => router.push("/our-shop/nova-red")}
-            >
-              <div className="ht-card-inner">
-                <div className="ht-card-glow" />
-
-                <div className="ht-image-wrap">
-                  <div className="ht-shimmer" />
-                  <img
-                    src="/images/strap-5.png"
-                    alt="strap"
-                    className="ht-card-img"
-                    loading="lazy"
-                  />
-                  <div className="ht-hover-overlay">
-                    <div className="ht-hover-content">
-                      <div className="ht-hover-line">
-                        <div className="line" />
-                        <span>Explore</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="ht-card-info">
-                  <div className="ht-card-header">
-                    <div>
-                      <p className="ht-card-ref">P-5</p>
-                      <h3 className="ht-card-name">Red</h3>
-                    </div>
-                    <div className="ht-card-arrow">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="ht-card-subtitle">Lucent Collection</p>
-                  <div className="ht-card-specs">
-                    <span>22mm</span>
-                    <div className="dot" />
-                    <span>Quick Release</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div
-              className={`ht-card silver`}
-              onClick={() => router.push("/our-shop/aurora-mint")}
-            >
-              <div className="ht-card-inner">
-                <div className="ht-card-glow" />
-
-                <div className="ht-image-wrap">
-                  <div className="ht-shimmer" />
-                  <img
-                    src="/images/strap-6.png"
-                    alt="strap"
-                    className="ht-card-img"
-                    loading="lazy"
-                  />
-                  <div className="ht-hover-overlay">
-                    <div className="ht-hover-content">
-                      <div className="ht-hover-line">
-                        <div className="line" />
-                        <span>Explore</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="ht-card-info">
-                  <div className="ht-card-header">
-                    <div>
-                      <p className="ht-card-ref">P-6</p>
-                      <h3 className="ht-card-name">Grey</h3>
-                    </div>
-                    <div className="ht-card-arrow">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="ht-card-subtitle">Lucent Collection</p>
-                  <div className="ht-card-specs">
-                    <span>22mm</span>
-                    <div className="dot" />
-                    <span>Quick Release</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
 
         </section>

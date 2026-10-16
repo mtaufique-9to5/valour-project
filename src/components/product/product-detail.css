@@ -1,0 +1,197 @@
+/* Shared product-detail pieces: reference label, specifications, related
+   products. Scoped to pd-* classes only (no html/body/global rules). Colours
+   default to the site's dark palette and can be tuned per layout with --pd-*. */
+
+.pd-ref {
+    font-family: "Orbitron", sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--pd-muted, #a3a3a3);
+    margin: 0 0 0.75rem;
+}
+
+/* ── Specifications ── */
+.pd-specs-title {
+    font-family: Poppins, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--pd-text, #fff);
+    margin: 0 0 0.75rem;
+}
+
+.pd-specs {
+    margin: 0 0 2.5rem;
+    border-top: 1px solid var(--pd-line, rgba(255, 255, 255, 0.1));
+}
+
+.pd-spec {
+    display: grid;
+    grid-template-columns: minmax(8rem, 40%) 1fr;
+    gap: 1rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--pd-line, rgba(255, 255, 255, 0.1));
+    font-size: 0.875rem;
+}
+
+.pd-spec dt {
+    font-weight: 400;
+    color: var(--pd-muted, #a3a3a3);
+}
+
+.pd-spec dd {
+    margin: 0;
+    color: var(--pd-text, #fff);
+}
+
+/* ── Related products ── */
+.pd-related {
+    padding: 2rem 0 7rem;
+}
+
+.pd-related-head {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.pd-related-head h2 {
+    font-family: Times New Roman, Times, serif;
+    font-weight: 600;
+    font-size: clamp(2rem, 4vw, 3rem);
+    margin: 0 0 0.75rem;
+    color: var(--pd-text, #fff);
+}
+
+.pd-related-head p {
+    color: var(--pd-muted, #a3a3a3);
+    font-size: 0.95rem;
+    font-weight: 300;
+    margin: 0;
+}
+
+.pd-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+
+@media (min-width: 992px) {
+    .pd-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.pd-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--pd-panel, #0a0a0a);
+    border: 1px solid var(--pd-line, rgba(255, 255, 255, 0.1));
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s ease;
+}
+
+.pd-card:hover,
+.pd-card:focus-within {
+    transform: translateY(-6px);
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+.pd-card-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1 / 1;
+    padding: 1.5rem;
+    background: linear-gradient(to bottom, #111, var(--pd-panel, #0a0a0a));
+}
+
+.pd-card-image img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pd-card:hover .pd-card-image img {
+    transform: scale(1.05);
+}
+
+.pd-card-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 1.25rem;
+}
+
+.pd-card-name {
+    font-family: Times New Roman, Times, serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.35rem;
+}
+
+.pd-card-name a {
+    color: var(--pd-text, #fff);
+    text-decoration: none;
+}
+
+.pd-card-price {
+    font-size: 0.95rem;
+    font-weight: 300;
+    color: #d4d4d4;
+    margin: 0 0 1.25rem;
+}
+
+.pd-related .pd-card-btn {
+    margin-top: auto;
+    width: 100%;
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+/* Keyboard focus */
+.pd-related a:focus-visible,
+.pd-related button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 4px;
+}
+
+.pd-card-name a:focus-visible {
+    outline-offset: 3px;
+}
+
+@media (max-width: 767.98px) {
+    .pd-grid {
+        gap: 1rem;
+    }
+
+    .pd-card-info {
+        padding: 1rem;
+    }
+
+    .pd-card-name {
+        font-size: 1.2rem;
+    }
+
+    .pd-spec {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pd-card,
+    .pd-card-image img {
+        transition: none;
+    }
+
+    .pd-card:hover,
+    .pd-card:focus-within,
+    .pd-card:hover .pd-card-image img {
+        transform: none;
+    }
+}
