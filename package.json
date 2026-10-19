@@ -12,6 +12,8 @@
     "@fancyapps/ui": "^6.1.14",
     "@headlessui/react": "^2.2.10",
     "@heroicons/react": "^2.2.0",
+    "@prisma/adapter-mariadb": "7.10.1",
+    "@prisma/client": "7.10.1",
     "@reduxjs/toolkit": "^2.12.0",
     "@studio-freight/lenis": "^1.0.42",
     "aos": "^2.3.4",
@@ -27,12 +29,17 @@
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.6.0",
     "react-redux": "^9.3.0",
+    "server-only": "0.0.1",
     "split-type": "^0.3.4",
     "swiper": "^12.1.4"
   },
   "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/react": "19.2.18",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
-    "sharp": "^0.34.5"
+    "prisma": "7.10.1",
+    "sharp": "^0.34.5",
+    "typescript": "5.9.3"
   }
 }
