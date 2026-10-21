@@ -1,0 +1,789 @@
+// DRAFT target schema — NOT the live schema and NOT applied.
+// Source of truth: Ordered_Ecommerce_CMS_Schema.md (revision 2, 2026-10-21).
+// Part A keeps the existing admin security tables (decision D1); the admin RBAC models are renamed per
+// SC-1 (planning only) with their existing constraint names pinned via `map:` because MariaDB 10.4
+// cannot rename indexes. Part B is the approved e-commerce/CMS schema (25 tables).
+// CHECK constraints from the schema document are added by hand in the migration SQL (Prisma cannot
+// declare them). Validate with: npx prisma validate --schema prisma/drafts/approved-schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ─── Part A: admin security (existing; D1) ───────────────────────────────────
+
+model AdminRole {
+  id          Int                   @id @default(autoincrement())
+  key         String                @unique(map: "roles_key_key") @db.VarChar(64)
+  name        String                @db.VarChar(100)
+  description String?               @db.VarChar(255)
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+  permissions AdminRolePermission[]
+  users       AdminUserRole[]
+
+  @@map("admin_roles")
+}
+
+model AdminPermission {
+  id          Int                   @id @default(autoincrement())
+  key         String                @unique(map: "permissions_key_key") @db.VarChar(100)
+  description String                @db.VarChar(255)
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+  roles       AdminRolePermission[]
+
+  @@map("admin_permissions")
+}
+
+model AdminRolePermission {
+  roleId       Int             @map("role_id")
+  permissionId Int             @map("permission_id")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  role         AdminRole       @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "role_permissions_role_id_fkey")
+  permission   AdminPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "role_permissions_permission_id_fkey")
+
+  @@id([roleId, permissionId])
+  @@index([permissionId], map: "role_permissions_permission_id_idx")
+  @@map("admin_role_permissions")
+}
+
+enum AuditActorType {
+  ADMIN
+  SYSTEM
+  CLI
+}
+
+model AuditLog {
+  id         Int            @id @default(autoincrement())
+  actorType  AuditActorType @map("actor_type")
+  actorId    String?        @map("actor_id") @db.VarChar(64)
+  actorLabel String?        @map("actor_label") @db.VarChar(255)
+  action     String         @db.VarChar(100)
+  targetType String?        @map("target_type") @db.VarChar(50)
+  targetId   String?        @map("target_id") @db.VarChar(64)
+  before     String?        @db.Text
+  after      String?        @db.Text
+  requestId  String?        @map("request_id") @db.VarChar(64)
+  ipAddress  String?        @map("ip_address") @db.VarChar(45)
+  userAgent  String?        @map("user_agent") @db.VarChar(255)
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+  @@index([action, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum AdminStatus {
+  ACTIVE
+  DISABLED
+}
+
+model AdminUser {
+  id               String           @id @db.VarChar(64)
+  name             String           @db.VarChar(100)
+  email            String           @unique @db.VarChar(255)
+  emailVerified    Boolean          @default(false) @map("email_verified")
+  image            String?          @db.VarChar(255)
+  twoFactorEnabled Boolean?         @default(false) @map("two_factor_enabled")
+  status           AdminStatus      @default(ACTIVE)
+  failedLoginCount Int              @default(0) @map("failed_login_count")
+  lockedUntil      DateTime?        @map("locked_until")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  sessions         AdminSession[]
+  accounts         AdminAccount[]
+  twoFactors       AdminTwoFactor[]
+  roles            AdminUserRole[]
+  blogs            Blog[] // SC-13
+
+  @@map("admin_users")
+}
+
+model AdminSession {
+  id        String    @id @db.VarChar(64)
+  token     String    @unique @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at")
+  ipAddress String?   @map("ip_address") @db.VarChar(64)
+  userAgent String?   @map("user_agent") @db.Text
+  userId    String    @map("user_id") @db.VarChar(64)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("admin_sessions")
+}
+
+model AdminAccount {
+  id                    String    @id @db.VarChar(64)
+  accountId             String    @map("account_id") @db.VarChar(255)
+  providerId            String    @map("provider_id") @db.VarChar(64)
+  userId                String    @map("user_id") @db.VarChar(64)
+  accessToken           String?   @map("access_token") @db.Text
+  refreshToken          String?   @map("refresh_token") @db.Text
+  idToken               String?   @map("id_token") @db.Text
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?   @db.Text
+  password              String?   @db.VarChar(255)
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  user                  AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("admin_accounts")
+}
+
+model AdminVerification {
+  id         String   @id @db.VarChar(64)
+  identifier String   @db.VarChar(255)
+  value      String   @db.Text
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@index([expiresAt])
+  @@map("admin_verifications")
+}
+
+model AdminTwoFactor {
+  id                      String    @id @db.VarChar(64)
+  secret                  String    @db.VarChar(255)
+  backupCodes             String    @map("backup_codes") @db.Text
+  userId                  String    @map("user_id") @db.VarChar(64)
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0) @map("failed_verification_count")
+  lockedUntil             DateTime? @map("locked_until")
+  user                    AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([secret])
+  @@index([userId])
+  @@map("admin_two_factors")
+}
+
+model AdminRateLimit {
+  id          String @id @db.VarChar(64)
+  key         String @unique @db.VarChar(255)
+  count       Int
+  lastRequest BigInt @map("last_request")
+
+  @@map("admin_rate_limits")
+}
+
+model AdminUserRole {
+  userId     String    @map("user_id") @db.VarChar(64)
+  roleId     Int       @map("role_id")
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  assignedBy String?   @map("assigned_by") @db.VarChar(64)
+  user       AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  role       AdminRole @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("admin_user_roles")
+}
+
+// ─── Part B: approved e-commerce and CMS schema (Ordered_Ecommerce_CMS_Schema.md rev. 2) ─────
+
+enum CategoryType {
+  blog
+  product
+}
+
+enum ProductType {
+  watch
+  strap
+  custom
+}
+
+enum ProductStatus {
+  draft
+  active
+  inactive
+}
+
+enum PageStatus {
+  draft
+  published
+}
+
+enum ModerationStatus {
+  pending
+  approved
+  rejected
+}
+
+enum BlogStatus {
+  draft
+  published
+  archived
+}
+
+enum CartStatus {
+  active
+  converted
+  abandoned
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum CouponType {
+  fixed
+  percentage
+}
+
+enum CustomizerPart {
+  case
+  dial
+  strap
+}
+
+enum CustomizerOptionStatus {
+  draft
+  active
+  inactive
+}
+
+// 1
+model Role {
+  id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name      String    @unique @db.VarChar(100)
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+  users     User[]
+
+  @@map("roles")
+}
+
+// 2
+model Brand {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name        String    @unique @db.VarChar(150)
+  slug        String    @unique @db.VarChar(180)
+  description String?   @db.Text
+  logo        String?   @db.VarChar(255)
+  status      Boolean   @default(false)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(3)
+  products    Product[]
+
+  @@index([status])
+  @@map("brands")
+}
+
+// 3
+model CmsPage {
+  id                  BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  pageTitle           String           @map("page_title") @db.VarChar(255)
+  pageSlug            String           @unique @map("page_slug") @db.VarChar(255)
+  pageMetaTitle       String?          @map("page_meta_title") @db.VarChar(255)
+  pageMetaDescription String?          @map("page_meta_description") @db.Text
+  status              PageStatus       @default(draft)
+  publishedAt         DateTime?        @map("published_at") @db.DateTime(3)
+  createdAt           DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt           DateTime         @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  sections            CmsPageSection[]
+  testimonials        Testimonial[]
+
+  @@map("cms_pages")
+}
+
+// 4
+model GeneralSetting {
+  id           BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  key          String   @unique @db.VarChar(150)
+  type         String   @db.VarChar(50)
+  value        String?  @db.LongText
+  fieldOptions Json?    @map("field_options")
+  isPublic     Boolean  @default(false) @map("is_public")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@map("general_settings")
+}
+
+// 5
+model Newsletter {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  email          String    @unique @db.VarChar(255)
+  isSubscribed   Boolean   @default(false) @map("is_subscribed")
+  subscribedAt   DateTime? @map("subscribed_at") @db.DateTime(3)
+  consentAt      DateTime  @map("consent_at") @db.DateTime(3)
+  consentSource  String    @map("consent_source") @db.VarChar(50)
+  unsubscribedAt DateTime? @map("unsubscribed_at") @db.DateTime(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt      DateTime? @map("deleted_at") @db.DateTime(3)
+
+  @@index([isSubscribed, createdAt])
+  @@map("newsletters")
+}
+
+// 6
+model ContactInquiry {
+  id           BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name         String    @db.VarChar(150)
+  email        String    @db.VarChar(255)
+  phone        String?   @db.VarChar(30)
+  subject      String?   @db.VarChar(255)
+  message      String    @db.Text
+  type         String    @default("contact") @db.VarChar(50)
+  extraData    Json?     @map("extra_data")
+  isRead       Boolean   @default(false) @map("is_read")
+  isReplied    Boolean   @default(false) @map("is_replied")
+  replyMessage String?   @map("reply_message") @db.Text
+  repliedAt    DateTime? @map("replied_at") @db.DateTime(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt    DateTime? @map("deleted_at") @db.DateTime(3)
+
+  @@index([isRead, createdAt])
+  @@index([type, createdAt])
+  @@index([email])
+  @@map("contact_inquiries")
+}
+
+// 7
+model Tag {
+  id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name      String    @unique @db.VarChar(100)
+  slug      String    @unique @db.VarChar(120)
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+  blogs     BlogTag[]
+
+  @@map("tags")
+}
+
+// 8
+model Coupon {
+  id             BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  code           String     @unique @db.VarChar(100)
+  type           CouponType
+  value          Decimal    @db.Decimal(12, 2)
+  minOrderAmount Decimal    @default(0.00) @map("min_order_amount") @db.Decimal(12, 2)
+  maxDiscount    Decimal?   @map("max_discount") @db.Decimal(12, 2)
+  usageLimit     Int?       @map("usage_limit") @db.UnsignedInt
+  usedCount      Int        @default(0) @map("used_count") @db.UnsignedInt
+  startsAt       DateTime?  @map("starts_at") @db.DateTime(3)
+  expiresAt      DateTime?  @map("expires_at") @db.DateTime(3)
+  status         Boolean    @default(false)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime   @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@index([status, expiresAt])
+  @@map("coupons")
+}
+
+// 9 (SC-8)
+model CustomizerOption {
+  id        BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
+  part      CustomizerPart
+  optionKey String                 @map("option_key") @db.VarChar(50)
+  name      String                 @db.VarChar(100)
+  image     String                 @db.VarChar(255)
+  sortOrder Int                    @default(0) @map("sort_order")
+  status    CustomizerOptionStatus @default(draft)
+  isDefault Boolean                @default(false) @map("is_default")
+  createdAt DateTime               @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime               @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@unique([part, optionKey])
+  @@index([part, status, sortOrder])
+  @@map("customizer_options")
+}
+
+// 10
+model Category {
+  id          BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  parentId    BigInt?      @map("parent_id") @db.UnsignedBigInt
+  name        String       @db.VarChar(150)
+  slug        String       @unique @db.VarChar(180)
+  description String?      @db.Text
+  type        CategoryType
+  image       String?      @db.VarChar(255)
+  status      Boolean      @default(false)
+  sortOrder   Int          @default(0) @map("sort_order")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime?    @map("deleted_at") @db.DateTime(3)
+  parent      Category?    @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children    Category[]   @relation("CategoryTree")
+  products    Product[]
+  blogs       Blog[]
+
+  @@index([parentId])
+  @@index([type, status, sortOrder])
+  @@map("categories")
+}
+
+// 11
+model User {
+  id              BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  roleId          BigInt          @map("role_id") @db.UnsignedBigInt
+  firstName       String          @map("first_name") @db.VarChar(100)
+  lastName        String?         @map("last_name") @db.VarChar(100)
+  name            String?         @db.VarChar(200)
+  phone           String?         @db.VarChar(30)
+  email           String          @unique @db.VarChar(255)
+  emailVerifiedAt DateTime?       @map("email_verified_at") @db.DateTime(3)
+  password        String?         @db.VarChar(255) // SC-7: NULL for guest customers
+  address         String?         @db.VarChar(255)
+  country         String?         @db.VarChar(100)
+  city            String?         @db.VarChar(100)
+  state           String?         @db.VarChar(100)
+  zip             String?         @db.VarChar(20)
+  image           String?         @db.VarChar(255)
+  status          Boolean         @default(true)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt       DateTime?       @map("deleted_at") @db.DateTime(3)
+  role            Role            @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  addresses       UserAddress[]
+  carts           Cart[]
+  orders          Order[]
+  wishlists       Wishlist[]
+  reviews         ProductReview[]
+
+  @@index([roleId])
+  @@index([status, createdAt])
+  @@map("users")
+}
+
+// 12
+model Product {
+  id               BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  categoryId       BigInt?         @map("category_id") @db.UnsignedBigInt
+  brandId          BigInt?         @map("brand_id") @db.UnsignedBigInt
+  name             String          @db.VarChar(255)
+  slug             String          @unique @db.VarChar(255)
+  sku              String          @unique @db.VarChar(100)
+  shortDescription String?         @map("short_description") @db.Text
+  longDescription  String?         @map("long_description") @db.LongText
+  additionalInfo   Json?           @map("additional_info")
+  type             ProductType
+  stock            Int             @default(0) @db.UnsignedInt
+  trackStock       Boolean         @default(false) @map("track_stock")
+  basePrice        Decimal         @map("base_price") @db.Decimal(12, 2)
+  salePrice        Decimal?        @map("sale_price") @db.Decimal(12, 2)
+  mainImage        String?         @map("main_image") @db.VarChar(255)
+  images           Json?
+  metaTitle        String?         @map("meta_title") @db.VarChar(255)
+  metaDescription  String?         @map("meta_description") @db.Text
+  status           ProductStatus   @default(draft)
+  isFeatured       Boolean         @default(false) @map("is_featured")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime?       @map("deleted_at") @db.DateTime(3)
+  category         Category?       @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  brand            Brand?          @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cartItems        CartItem[]
+  orderItems       OrderItem[]
+  wishlists        Wishlist[]
+  reviews          ProductReview[]
+
+  @@index([status, type])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([isFeatured, status])
+  @@map("products")
+}
+
+// 13
+model CmsPageSection {
+  id               BigInt                @id @default(autoincrement()) @db.UnsignedBigInt
+  cmsPageId        BigInt                @map("cms_page_id") @db.UnsignedBigInt
+  sectionName      String                @map("section_name") @db.VarChar(150)
+  sectionType      String                @map("section_type") @db.VarChar(100)
+  sectionSortOrder Int                   @default(0) @map("section_sort_order") @db.UnsignedInt
+  createdAt        DateTime              @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime              @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  page             CmsPage               @relation(fields: [cmsPageId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  fields           CmsPageSectionField[]
+
+  @@index([cmsPageId, sectionSortOrder])
+  @@map("cms_page_sections")
+}
+
+// 14
+model Testimonial {
+  id          BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  cmsPageId   BigInt?          @map("cms_page_id") @db.UnsignedBigInt
+  name        String           @db.VarChar(150)
+  designation String?          @db.VarChar(150)
+  company     String?          @db.VarChar(150)
+  message     String           @db.Text
+  image       String?          @db.VarChar(255)
+  rating      Int?             @db.UnsignedTinyInt
+  status      ModerationStatus @default(pending)
+  sortOrder   Int              @default(0) @map("sort_order")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime?        @map("deleted_at") @db.DateTime(3)
+  page        CmsPage?         @relation(fields: [cmsPageId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+
+  @@index([status, sortOrder])
+  @@index([cmsPageId])
+  @@map("testimonials")
+}
+
+// 15
+model UserAddress {
+  id           BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  userId       BigInt   @map("user_id") @db.UnsignedBigInt
+  name         String   @db.VarChar(150)
+  phone        String   @db.VarChar(30)
+  addressLine1 String   @map("address_line_1") @db.VarChar(255)
+  addressLine2 String?  @map("address_line_2") @db.VarChar(255)
+  city         String   @db.VarChar(100)
+  state        String?  @db.VarChar(100)
+  country      String   @db.VarChar(100)
+  zip          String?  @db.VarChar(20)
+  isDefault    Boolean  @default(false) @map("is_default")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([userId, isDefault])
+  @@map("user_addresses")
+}
+
+// 16
+model Cart {
+  id        BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt?    @map("user_id") @db.UnsignedBigInt
+  sessionId String?    @map("session_id") @db.VarChar(255)
+  status    CartStatus @default(active)
+  expiresAt DateTime?  @map("expires_at") @db.DateTime(3)
+  createdAt DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  items     CartItem[]
+
+  @@index([sessionId])
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@map("carts")
+}
+
+// 17
+model Order {
+  id               BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  userId           BigInt?         @map("user_id") @db.UnsignedBigInt
+  orderNumber      String          @unique @map("order_number") @db.VarChar(50)
+  billingDetails   Json            @map("billing_details")
+  shippingDetails  Json            @map("shipping_details")
+  shippingMethod   String?         @map("shipping_method") @db.VarChar(100)
+  shippingAmount   Decimal         @default(0.00) @map("shipping_amount") @db.Decimal(12, 2)
+  discount         Decimal         @default(0.00) @db.Decimal(12, 2)
+  subtotal         Decimal         @db.Decimal(12, 2)
+  taxAmount        Decimal         @default(0.00) @map("tax_amount") @db.Decimal(12, 2)
+  total            Decimal         @db.Decimal(12, 2)
+  currency         String          @db.Char(3) // SC-10: from setting store_currency
+  status           OrderStatus     @default(pending)
+  paymentStatus    PaymentStatus   @default(pending) @map("payment_status")
+  paymentMethod    String?         @map("payment_method") @db.VarChar(100)
+  paymentReference String?         @map("payment_reference") @db.VarChar(255)
+  notes            String?         @db.Text
+  checkoutToken    String?         @unique @map("checkout_token") @db.VarChar(64)
+  couponCode       String?         @map("coupon_code") @db.VarChar(100)
+  couponReleasedAt DateTime?       @map("coupon_released_at") @db.DateTime(3)
+  placedAt         DateTime?       @map("placed_at") @db.DateTime(3)
+  createdAt        DateTime        @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime?       @map("deleted_at") @db.DateTime(3) // never set by the application
+  user             User?           @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  items            OrderItem[]
+  payments         Payment[]
+  reviews          ProductReview[]
+
+  @@index([status, createdAt])
+  @@index([paymentStatus, createdAt])
+  @@index([userId])
+  @@index([placedAt])
+  @@map("orders")
+}
+
+// 18 (SC-13: author is an admin user)
+model Blog {
+  id              BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  categoryId      BigInt?    @map("category_id") @db.UnsignedBigInt
+  title           String     @db.VarChar(255)
+  slug            String     @unique @db.VarChar(255)
+  description     String     @db.LongText
+  status          BlogStatus @default(draft)
+  featuredImage   String?    @map("featured_image") @db.VarChar(255)
+  images          Json?
+  metaTitle       String?    @map("meta_title") @db.VarChar(255)
+  metaDescription String?    @map("meta_description") @db.Text
+  metaKeywords    String?    @map("meta_keywords") @db.Text
+  publishedAt     DateTime?  @map("published_at") @db.DateTime(3)
+  authorAdminId   String?    @map("author_admin_id") @db.VarChar(64)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt       DateTime?  @map("deleted_at") @db.DateTime(3)
+  category        Category?  @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  author          AdminUser? @relation(fields: [authorAdminId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  tags            BlogTag[]
+
+  @@index([status, publishedAt])
+  @@index([categoryId])
+  @@index([authorAdminId])
+  @@map("blogs")
+}
+
+// 19
+model CmsPageSectionField {
+  id               BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  cmsPageSectionId BigInt         @map("cms_page_section_id") @db.UnsignedBigInt
+  fieldGroup       String         @default("") @map("field_group") @db.VarChar(100)
+  fieldName        String         @map("field_name") @db.VarChar(150)
+  fieldType        String         @map("field_type") @db.VarChar(50)
+  fieldValue       String?        @map("field_value") @db.LongText
+  fieldOptions     Json?          @map("field_options")
+  createdAt        DateTime       @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  section          CmsPageSection @relation(fields: [cmsPageSectionId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([cmsPageSectionId, fieldGroup, fieldName])
+  @@map("cms_page_section_fields")
+}
+
+// 20
+model BlogTag {
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  blogId    BigInt   @map("blog_id") @db.UnsignedBigInt
+  tagId     BigInt   @map("tag_id") @db.UnsignedBigInt
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([blogId, tagId])
+  @@index([tagId])
+  @@map("blog_tag")
+}
+
+// 21
+model CartItem {
+  id          BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  cartId      BigInt   @map("cart_id") @db.UnsignedBigInt
+  productId   BigInt   @map("product_id") @db.UnsignedBigInt
+  quantity    Int      @default(1) @db.UnsignedInt
+  options     Json?
+  optionsHash String   @default("") @map("options_hash") @db.Char(64)
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  cart        Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([cartId, productId, optionsHash])
+  @@index([productId])
+  @@map("cart_items")
+}
+
+// 22
+model OrderItem {
+  id               BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  orderId          BigInt   @map("order_id") @db.UnsignedBigInt
+  productId        BigInt?  @map("product_id") @db.UnsignedBigInt
+  productName      String   @map("product_name") @db.VarChar(255)
+  sku              String?  @db.VarChar(100)
+  productImage     String?  @map("product_image") @db.VarChar(255)
+  price            Decimal  @db.Decimal(12, 2)
+  quantity         Int      @db.UnsignedInt
+  subtotal         Decimal  @db.Decimal(12, 2)
+  discount         Decimal  @default(0.00) @db.Decimal(12, 2)
+  total            Decimal  @db.Decimal(12, 2)
+  options          Json?
+  stockDeducted    Boolean  @default(false) @map("stock_deducted")
+  releasedQuantity Int      @default(0) @map("released_quantity") @db.UnsignedInt
+  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product          Product? @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// 23
+model Payment {
+  id            BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  orderId       BigInt        @map("order_id") @db.UnsignedBigInt
+  transactionId String?       @map("transaction_id") @db.VarChar(255)
+  paymentMethod String        @map("payment_method") @db.VarChar(100)
+  amount        Decimal       @db.Decimal(12, 2)
+  status        PaymentStatus @default(pending)
+  paidAt        DateTime?     @map("paid_at") @db.DateTime(3)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([paymentMethod, transactionId])
+  @@index([orderId])
+  @@index([status, createdAt])
+  @@map("payments")
+}
+
+// 24
+model Wishlist {
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt   @map("user_id") @db.UnsignedBigInt
+  productId BigInt   @map("product_id") @db.UnsignedBigInt
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@map("wishlists")
+}
+
+// 25 (SC-16)
+model ProductReview {
+  id        BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt           @map("user_id") @db.UnsignedBigInt
+  productId BigInt           @map("product_id") @db.UnsignedBigInt
+  orderId   BigInt           @map("order_id") @db.UnsignedBigInt
+  rating    Int              @db.UnsignedTinyInt
+  review    String?          @db.Text
+  status    ModerationStatus @default(pending)
+  createdAt DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime         @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  order     Order            @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([userId, productId, orderId])
+  @@index([productId, status])
+  @@map("product_reviews")
+}

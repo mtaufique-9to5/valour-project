@@ -5,9 +5,7 @@ import "./globals.css"
 import "./responsive.css"
 import { Provider } from 'react-redux'
 import { store } from './store'
-import CartSidebar from '@/components/CartSidebar'
-import CartHydrator from './CartHydrator'
-import { Toaster } from 'react-hot-toast'
+import StorefrontChrome from './StorefrontChrome'
 
 export default function RootLayout({ children }) {
   return (
@@ -25,9 +23,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <Provider store={store}>
-        <CartHydrator />
-        <Toaster position="bottom-right" />
-        <CartSidebar />
+        <StorefrontChrome />
           {children}
         </Provider>
       </body>

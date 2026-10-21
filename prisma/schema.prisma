@@ -1,0 +1,564 @@
+// VALOUR database schema (Prisma 7.10.1, MariaDB/MySQL).
+//
+// Connection URLs are not set here: Prisma 7 reads them from prisma.config.mjs,
+// which takes them from environment variables (.env.local locally).
+//
+// Conventions (MariaDB 10.4 on Windows uses lower_case_table_names=1):
+// - every table and column has an explicit lowercase/snake_case name (@@map/@map),
+//   so names are identical on Windows and case-sensitive Linux servers;
+// - every indexed string column has an explicit bounded length (@db.VarChar(n)),
+//   keeping index keys well under InnoDB's 3072-byte limit with utf8mb4.
+// - every connection enables strict SQL mode (src/server/db-config.js), so
+//   over-long values are rejected rather than truncated; string lengths are still
+//   validated in application code so users get a clear error.
+
+generator client {
+  // JavaScript client generated into node_modules/.prisma/client, so the
+  // project stays JavaScript. Revisit (switch to "prisma-client") before Prisma 8.
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // MariaDB uses Prisma's MySQL provider; queries run through @prisma/adapter-mariadb.
+  provider = "mysql"
+}
+
+// ─── Role-based access control ──────────────────────────────────────────────
+// Roles and permissions are system data: created/changed only by the seed and
+// migrations (no admin UI deletion in the foundation). Permission keys checked in
+// code are constants that tests compare with the seed. An unknown or missing
+// permission always results in "deny".
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  key         String           @unique @db.VarChar(64) // e.g. "SUPER_ADMIN"; referenced in code
+  name        String           @db.VarChar(100)
+  description String?          @db.VarChar(255)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  permissions RolePermission[]
+  users       AdminUserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  key         String           @unique @db.VarChar(100) // e.g. "product.price.update"; referenced in code
+  description String           @db.VarChar(255)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+// Pure link rows: removed together with their role or permission.
+// (User-to-role assignment lives in AdminUserRole, which uses onDelete: Restrict
+// so an assigned role cannot be deleted.)
+model RolePermission {
+  roleId       Int        @map("role_id")
+  permissionId Int        @map("permission_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// ─── Audit log ──────────────────────────────────────────────────────────────
+// Append-only by policy: written only through the future audit service
+// (recordAudit), in the same transaction as the change it records; the
+// application never updates or deletes rows. In production the runtime database
+// user gets only SELECT and INSERT on audit_logs.
+//
+// No foreign keys, so history survives user or role deletion. Rules enforced by
+// the audit service (application-level, not expressible here):
+// - actorType ADMIN requires actorId (the Better Auth user id) and actorLabel;
+//   SYSTEM and CLI events may leave actorId empty.
+// - before/after hold serialized JSON built from per-action ALLOWLISTED fields
+//   only, each limited to 60,000 bytes (UTF-8); string fields are trimmed to their
+//   column lengths before writing.
+// - Never stored: passwords or password hashes, session tokens, MFA secrets or
+//   recovery codes, API keys, connection strings, or unnecessary customer
+//   personal data.
+// Retention (provisional, pending legal/business review): 12 months; IP address
+// and user agent to be minimized after 90 days. No automated deletion yet.
+
+enum AuditActorType {
+  ADMIN // a signed-in administrator (actorId required)
+  SYSTEM // the application itself
+  CLI // server-side scripts (seed, create-first-admin)
+}
+
+model AuditLog {
+  id         Int            @id @default(autoincrement())
+  actorType  AuditActorType @map("actor_type")
+  actorId    String?        @map("actor_id") @db.VarChar(64) // Better Auth user ids are strings; no FK by design
+  actorLabel String?        @map("actor_label") @db.VarChar(255) // e.g. admin email at the time of the action
+  action     String         @db.VarChar(100) // "auth.login.success", "role.permission.grant", ...
+  targetType String?        @map("target_type") @db.VarChar(50)
+  targetId   String?        @map("target_id") @db.VarChar(64)
+  before     String?        @db.Text // serialized, validated JSON (allowlisted fields only)
+  after      String?        @db.Text
+  requestId  String?        @map("request_id") @db.VarChar(64)
+  ipAddress  String?        @map("ip_address") @db.VarChar(45) // fits IPv6
+  userAgent  String?        @map("user_agent") @db.VarChar(255)
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+  @@index([action, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── Admin authentication (Better Auth 1.7.8) ───────────────────────────────
+// Field names match Better Auth's core schema and two-factor plugin exactly
+// (read from the installed 1.7.8 package); models are mapped to lowercase admin_*
+// tables. Better Auth is configured with modelName adminUser/adminSession/
+// adminAccount/adminVerification/adminRateLimit and twoFactorTable adminTwoFactor.
+// IDs are generated by Better Auth (32-character strings); VarChar(64) also
+// matches audit_logs.actor_id. Long, unindexed values (user agents, tokens) use
+// TEXT so strict SQL mode never rejects a real-world value.
+
+enum AdminStatus {
+  ACTIVE
+  DISABLED
+}
+
+model AdminUser {
+  id               String           @id @db.VarChar(64)
+  name             String           @db.VarChar(100)
+  email            String           @unique @db.VarChar(255)
+  emailVerified    Boolean          @default(false) @map("email_verified")
+  image            String?          @db.VarChar(255) // part of Better Auth's core schema; unused
+  twoFactorEnabled Boolean?         @default(false) @map("two_factor_enabled") // two-factor plugin
+  // VALOUR additions (server-owned; not accepted from Better Auth API input):
+  status           AdminStatus      @default(ACTIVE)
+  failedLoginCount Int              @default(0) @map("failed_login_count") // password-failure lockout
+  lockedUntil      DateTime?        @map("locked_until")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  sessions         AdminSession[]
+  accounts         AdminAccount[]
+  twoFactors       AdminTwoFactor[]
+  roles            AdminUserRole[]
+
+  @@map("admin_users")
+}
+
+model AdminSession {
+  id        String    @id @db.VarChar(64)
+  token     String    @unique @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at")
+  ipAddress String?   @map("ip_address") @db.VarChar(64)
+  userAgent String?   @map("user_agent") @db.Text
+  userId    String    @map("user_id") @db.VarChar(64)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt]) // expired-session clean-up
+  @@map("admin_sessions")
+}
+
+model AdminAccount {
+  id                    String    @id @db.VarChar(64)
+  accountId             String    @map("account_id") @db.VarChar(255)
+  providerId            String    @map("provider_id") @db.VarChar(64) // "credential" for email/password
+  userId                String    @map("user_id") @db.VarChar(64)
+  accessToken           String?   @map("access_token") @db.Text // OAuth only; unused
+  refreshToken          String?   @map("refresh_token") @db.Text // OAuth only; unused
+  idToken               String?   @map("id_token") @db.Text // OAuth only; unused
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?   @db.Text
+  password              String?   @db.VarChar(255) // argon2id hash only (~100 chars)
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  user                  AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId]) // VALOUR hardening: one account per provider identity
+  @@index([userId])
+  @@map("admin_accounts")
+}
+
+model AdminVerification {
+  id         String   @id @db.VarChar(64)
+  identifier String   @db.VarChar(255)
+  value      String   @db.Text
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@index([expiresAt]) // clean-up
+  @@map("admin_verifications")
+}
+
+// Two-factor plugin: TOTP secret and backup codes are stored encrypted by Better Auth.
+model AdminTwoFactor {
+  id                      String    @id @db.VarChar(64)
+  secret                  String    @db.VarChar(255)
+  backupCodes             String    @map("backup_codes") @db.Text
+  userId                  String    @map("user_id") @db.VarChar(64)
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0) @map("failed_verification_count")
+  lockedUntil             DateTime? @map("locked_until")
+  user                    AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([secret])
+  @@index([userId])
+  @@map("admin_two_factors")
+}
+
+// Better Auth database rate limiting (rateLimit.storage = "database").
+model AdminRateLimit {
+  id          String @id @db.VarChar(64)
+  key         String @unique @db.VarChar(255)
+  count       Int
+  lastRequest BigInt @map("last_request")
+
+  @@map("admin_rate_limits")
+}
+
+// VALOUR RBAC: which roles an administrator holds. A role that is still assigned
+// cannot be deleted (Restrict); removing an admin user removes its assignments.
+model AdminUserRole {
+  userId     String    @map("user_id") @db.VarChar(64)
+  roleId     Int       @map("role_id")
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  assignedBy String?   @map("assigned_by") @db.VarChar(64) // admin id or null for CLI; no FK (history)
+  user       AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  role       Role      @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("admin_user_roles")
+}
+
+// ─── Catalog, pricing, inventory, orders (PROPOSAL) ─────────────────────────
+// Mirrors src/data/catalog.js. Rules:
+// - Money is Int minor units (cents) + CHAR(3) currency: exact, no Decimal
+//   objects to serialize across server/client boundaries, trivially summed.
+// - No "Price on request": an ACTIVE product always has a confirmed USD price
+//   > 0 (enforced in src/server/catalog/product-rules.js + actions). amount_minor
+//   NULL survives only on legacy DRAFT rows (the imported Custom Watch).
+// - Stock: inventory.tracking_mode NOT_TRACKED => quantity_on_hand NULL;
+//   TRACKED => integer >= 0. Never defaulted to 0.
+// - Business history is never cascade-deleted: products are ARCHIVED, not
+//   deleted; ledgers/order lines use Restrict or SetNull. Actor ids are Better
+//   Auth admin ids without FK (same policy as audit_logs).
+
+enum ProductType {
+  WATCH
+  STRAP
+  CUSTOM // legacy only: the imported "Custom Watch"; cannot be created in admin
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Collection {
+  id        Int       @id @default(autoincrement())
+  slug      String    @unique @db.VarChar(100) // "lucent"
+  name      String    @db.VarChar(150) // "Lucent Collection"
+  position  Int       @default(0)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  products  Product[]
+
+  @@map("collections")
+}
+
+model Product {
+  id           Int                   @id @default(autoincrement())
+  type         ProductType
+  // Per-type id used by existing carts ("watch:1" = type WATCH, legacy_id 1).
+  legacyId     Int?                  @map("legacy_id")
+  slug         String                @unique @db.VarChar(120)
+  // "LUC-01", "P-1". NULL for the Custom Watch: catalog.js gives it no ref
+  // (unique indexes allow several NULLs).
+  // SKU in the admin (uppercase A-Z0-9-, max 32, validated in code).
+  ref          String?               @unique @db.VarChar(32)
+  name         String                @db.VarChar(150)
+  // Plain-text admin description. A column (not ProductContent JSON) because it
+  // is a first-class editable field: no JSON parse/validate round-trip on every
+  // edit. ProductContent keeps the storefront's presentational structures.
+  description  String?               @db.Text
+  legacyName   String?               @map("legacy_name") @db.VarChar(150)
+  subtitle     String?               @db.VarChar(150)
+  status       ProductStatus         @default(DRAFT)
+  position     Int                   @default(0) // catalog order (related products follow it)
+  collectionId Int?                  @map("collection_id")
+  movement     String?               @db.VarChar(50)
+  material     String?               @db.VarChar(50)
+  color        String?               @db.VarChar(50)
+  accent       String?               @db.VarChar(9) // "#FACC15"
+  limited      Boolean               @default(false)
+  edition      String?               @db.VarChar(50)
+  tagline      String?               @db.VarChar(255)
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+  collection   Collection?           @relation(fields: [collectionId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  // Presentational storefront content lives in a 1:1 table (see ProductContent).
+  content      ProductContent?
+  images       ProductImage[]
+  prices       Price[]
+  priceChanges PriceChange[]
+  inventory    Inventory?
+  adjustments  InventoryAdjustment[]
+  orderItems   OrderItem[]
+
+  @@unique([type, legacyId])
+  @@index([status, type, position])
+  @@index([collectionId])
+  @@index([createdAt])
+  @@map("products")
+}
+
+// One row per product. Strap description/specs (catalog.js STRAP_DESCRIPTION /
+// STRAP_SPECS) are copied into each strap's row so straps can diverge later.
+// Description runs, specs, editions, pdpSubtitle, headings, detail1, ... as
+// validated JSON: admin list queries never load it, and its shape can evolve
+// with the storefront without migrations.
+model ProductContent {
+  productId Int      @id @map("product_id")
+  data      String   @db.Text // serialized JSON, validated by a schema in code
+  updatedAt DateTime @updatedAt @map("updated_at")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("product_contents")
+}
+
+enum ImageRole {
+  MAIN // the single primary image (is_primary = true)
+  GALLERY
+}
+
+enum ImageSource {
+  STATIC // legacy file under public/ (url = "/images/...")
+  UPLOAD // admin upload in storage/uploads/products (storage_key)
+}
+
+// Exactly one MAIN (is_primary) per product is enforced in code inside a
+// transaction that locks the product row (MySQL has no partial unique index).
+// legacy_role keeps the catalog.js slot (CARD/MAIN/SECONDARY/THUMBNAIL) so the
+// storefront switch can reproduce the current pages exactly.
+model ProductImage {
+  id         Int         @id @default(autoincrement())
+  productId  Int         @map("product_id")
+  source     ImageSource
+  role       ImageRole
+  isPrimary  Boolean     @default(false) @map("is_primary")
+  position   Int         @default(0)
+  url        String?     @db.VarChar(500) // STATIC only
+  storageKey String?     @unique @map("storage_key") @db.VarChar(200) // UPLOAD only: "<productId>/<32 hex>.<ext>"
+  mime       String?     @db.VarChar(32)
+  bytes      Int?
+  width      Int?
+  height     Int?
+  alt        String?     @db.VarChar(255)
+  legacyRole String?     @map("legacy_role") @db.VarChar(16)
+  createdBy  String?     @map("created_by") @db.VarChar(64) // admin id; no FK (history)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([productId, role, position])
+  @@map("product_images")
+}
+
+// Current price per product and currency. USD only for now (column stays CHAR(3)).
+// amount_minor NULL only for legacy DRAFT rows; such a product cannot be ACTIVE.
+model Price {
+  id          Int      @id @default(autoincrement())
+  productId   Int      @map("product_id")
+  currency    String   @default("USD") @db.Char(3)
+  amountMinor Int?     @map("amount_minor") // cents; 52500 = $525.00
+  confirmed   Boolean  @default(false) // only confirmed prices are sold
+  effectiveAt DateTime @default(now()) @map("effective_at")
+  updatedBy   String?  @map("updated_by") @db.VarChar(64)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([productId, currency])
+  @@map("prices")
+}
+
+// Append-only price history.
+model PriceChange {
+  id             Int      @id @default(autoincrement())
+  productId      Int      @map("product_id")
+  currency       String   @db.Char(3)
+  oldAmountMinor Int?     @map("old_amount_minor")
+  newAmountMinor Int?     @map("new_amount_minor")
+  oldConfirmed   Boolean? @map("old_confirmed")
+  newConfirmed   Boolean  @map("new_confirmed")
+  reason         String?  @db.VarChar(255)
+  actorId        String?  @map("actor_id") @db.VarChar(64) // no FK (history)
+  createdAt      DateTime @default(now()) @map("created_at")
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([productId, createdAt])
+  @@map("price_changes")
+}
+
+enum TrackingMode {
+  TRACKED
+  NOT_TRACKED
+}
+
+model Inventory {
+  productId         Int          @id @map("product_id")
+  trackingMode      TrackingMode @default(NOT_TRACKED) @map("tracking_mode")
+  quantityOnHand    Int?         @map("quantity_on_hand") // NULL iff NOT_TRACKED
+  reserved          Int          @default(0) // for open-order reservations; unused for now
+  lowStockThreshold Int?         @map("low_stock_threshold")
+  updatedBy         String?      @map("updated_by") @db.VarChar(64)
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  product           Product      @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("inventory")
+}
+
+enum InventoryReason {
+  INITIAL_COUNT
+  RESTOCK
+  SALE
+  RETURN
+  DAMAGE
+  CORRECTION
+}
+
+// Append-only stock ledger.
+model InventoryAdjustment {
+  id            Int             @id @default(autoincrement())
+  productId     Int             @map("product_id")
+  delta         Int
+  quantityAfter Int?            @map("quantity_after")
+  reason        InventoryReason
+  note          String?         @db.VarChar(255)
+  orderId       Int?            @map("order_id") // no FK; links SALE/RETURN rows
+  actorId       String?         @map("actor_id") @db.VarChar(64)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  product       Product         @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([productId, createdAt])
+  @@map("inventory_adjustments")
+}
+
+enum CustomizerPart {
+  CASE
+  DIAL
+  STRAP
+}
+
+// Customizer options. option_id is the stable id stored in carts ("grey-teal").
+model CustomizerOption {
+  id        Int            @id @default(autoincrement())
+  part      CustomizerPart
+  optionId  String         @map("option_id") @db.VarChar(50)
+  name      String         @db.VarChar(100)
+  imageUrl  String         @map("image_url") @db.VarChar(500)
+  position  Int            @default(0)
+  isDefault Boolean        @default(false) @map("is_default")
+  active    Boolean        @default(true)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  @@unique([part, optionId])
+  @@map("customizer_options")
+}
+
+// Minimal PII: no addresses or payment data here. Guest checkout creates or
+// matches a Customer by email (lowercased).
+model Customer {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique @db.VarChar(255)
+  name      String?  @db.VarChar(150)
+  phone     String?  @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  orders    Order[]
+
+  @@index([createdAt])
+  @@map("customers")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+// No tax, shipping, discount or address fields yet (Phase B). Currency: USD only.
+model Order {
+  id            Int         @id @default(autoincrement())
+  number        String      @unique @db.VarChar(32) // human-facing, e.g. "VAL-000123"
+  customerId    Int?        @map("customer_id") // nullable for safety; checkout always sets it
+  status        OrderStatus @default(PENDING)
+  currency      String      @default("USD") @db.Char(3)
+  subtotalMinor Int         @map("subtotal_minor")
+  totalMinor    Int         @map("total_minor")
+  placedAt      DateTime    @default(now()) @map("placed_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  customer      Customer?   @relation(fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  items         OrderItem[]
+
+  @@index([status, placedAt])
+  @@index([customerId, placedAt])
+  @@index([placedAt])
+  @@map("orders")
+}
+
+// Order-number counter: "VAL-000123" = name "order", value 123. Incremented
+// in the same transaction that creates the order, so numbers are never reused.
+model OrderSequence {
+  name  String @id @db.VarChar(32)
+  value Int    @default(0)
+
+  @@map("order_sequences")
+}
+
+// Snapshot of what was sold; survives product edits and archival.
+model OrderItem {
+  id             Int         @id @default(autoincrement())
+  orderId        Int         @map("order_id")
+  productId      Int?        @map("product_id")
+  productType    ProductType @map("product_type")
+  productName    String      @map("product_name") @db.VarChar(150)
+  productRef     String?     @map("product_ref") @db.VarChar(40)
+  options        String?     @db.Text // JSON snapshot, e.g. custom watch case/dial/strap names
+  unitPriceMinor Int         @map("unit_price_minor")
+  quantity       Int
+  lineTotalMinor Int         @map("line_total_minor")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  order          Order       @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product        Product?    @relation(fields: [productId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model AdminSetting {
+  key       String   @id @db.VarChar(100)
+  value     String   @db.Text
+  updatedBy String?  @map("updated_by") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_settings")
+}
