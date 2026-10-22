@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation'
-import { requireAdminAllowingMfaSetup } from '@/server/auth/guards'
+import { getMfaSetup } from '@/server/auth/guards'
 import MfaSetupClient from '@/admin/client/MfaSetupClient'
 
-// Signed in with a password but MFA not yet enrolled: this is the only admin page
-// such a session can open (every other page redirects here).
+// Password accepted but MFA not yet enrolled: the only admin page such a
+// sign-in can open. Every other admin page requires a full session.
 export default async function AdminMfaSetupPage() {
-  const { user } = await requireAdminAllowingMfaSetup()
-  if (user.twoFactorEnabled === true) redirect('/admin')
-  return <MfaSetupClient accountLabel={user.email} />
+  const pending = await getMfaSetup()
+  if (!pending) redirect('/admin/login')
+  return <MfaSetupClient accountLabel={pending.user.email} />
 }

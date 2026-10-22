@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
-import { Ellipsis, ShieldCheck, ShieldOff, UserPlus } from 'lucide-react'
+import { Ellipsis, RotateCcw, ShieldCheck, ShieldOff, UserCog, UserPlus } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { Card } from '../components/Card'
 import DataTable from '../components/DataTable'
@@ -13,11 +13,13 @@ import { FormField, Input, Select } from '../components/FormField'
 import { Alert } from '../components/Alert'
 
 // users = [{ id, name, email, role, status, mfa, lastLogin }]; roles = [{ id, name }]
-// onInvite({ name, email, roleId }); onSuspend(user); onResetMfa(user). Missing callbacks hide the action.
-export default function AdminUsersView({ users = [], roles = [], loading = false, onInvite, onSuspend, onResetMfa, inviteError, badge }) {
+// onInvite({ name, email, roleId }); onSuspend(user); onReactivate(user); onResetMfa(user);
+// onChangeRole(user, roleId); selfId hides self-actions. Missing callbacks hide the action.
+export default function AdminUsersView({ users = [], roles = [], loading = false, onInvite, onSuspend, onReactivate, onResetMfa, onChangeRole, selfId, inviteError, badge }) {
   const [inviteOpen, setInviteOpen] = useState(false)
   const [invite, setInvite] = useState({ name: '', email: '', roleId: roles[0]?.id ?? '' })
   const [confirm, setConfirm] = useState(null) // { kind: 'suspend' | 'mfa', user }
+  const [roleChange, setRoleChange] = useState(null) // { user, roleId }
 
   const runConfirm = () => {
     if (confirm?.kind === 'suspend') onSuspend?.(confirm.user)
@@ -25,7 +27,7 @@ export default function AdminUsersView({ users = [], roles = [], loading = false
     setConfirm(null)
   }
 
-  const hasMenu = onSuspend || onResetMfa
+  const hasMenu = onSuspend || onResetMfa || onReactivate || onChangeRole
 
   return (
     <>
@@ -58,14 +60,28 @@ export default function AdminUsersView({ users = [], roles = [], loading = false
                       <Ellipsis size={16} aria-hidden="true" />
                     </MenuButton>
                     <MenuItems transition anchor={{ to: 'bottom end', gap: 4 }} className="va-admin va-portal va-menu">
-                      {onResetMfa && (
+                      {onChangeRole && r.id !== selfId && (
+                        <MenuItem>
+                          <button type="button" className="va-menu-item" onClick={() => setRoleChange({ user: r, roleId: r.roleId ?? '' })}>
+                            <UserCog size={16} aria-hidden="true" /> Change role
+                          </button>
+                        </MenuItem>
+                      )}
+                      {onReactivate && r.status === 'Suspended' && (
+                        <MenuItem>
+                          <button type="button" className="va-menu-item" onClick={() => onReactivate(r)}>
+                            <RotateCcw size={16} aria-hidden="true" /> Reactivate
+                          </button>
+                        </MenuItem>
+                      )}
+                      {onResetMfa && r.id !== selfId && (
                         <MenuItem>
                           <button type="button" className="va-menu-item" onClick={() => setConfirm({ kind: 'mfa', user: r })}>
                             <ShieldCheck size={16} aria-hidden="true" /> Reset 2FA
                           </button>
                         </MenuItem>
                       )}
-                      {onSuspend && r.status !== 'Suspended' && (
+                      {onSuspend && r.status !== 'Suspended' && r.id !== selfId && (
                         <MenuItem>
                           <button type="button" className="va-menu-item va-danger" onClick={() => setConfirm({ kind: 'suspend', user: r })}>
                             <ShieldOff size={16} aria-hidden="true" /> Suspend
@@ -114,6 +130,25 @@ export default function AdminUsersView({ users = [], roles = [], loading = false
         </form>
       </Modal>
 
+      <Modal
+        open={Boolean(roleChange)}
+        onClose={() => setRoleChange(null)}
+        title={roleChange ? `Change role for ${roleChange.user.name}` : ''}
+        description="Choosing a role without admin access removes their access to this panel."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setRoleChange(null)}>Cancel</Button>
+            <Button variant="primary" onClick={() => { onChangeRole?.(roleChange.user, roleChange.roleId); setRoleChange(null) }} disabled={!roleChange?.roleId}>Save role</Button>
+          </>
+        }
+      >
+        {roleChange && (
+          <FormField label="Role" required>
+            <Select value={roleChange.roleId} onChange={(e) => setRoleChange((v) => ({ ...v, roleId: e.target.value }))} options={roles.map((x) => ({ value: x.id, label: x.name }))} />
+          </FormField>
+        )}
+      </Modal>
+
       <ConfirmDialog
         open={Boolean(confirm)}
         onClose={() => setConfirm(null)}
@@ -122,7 +157,7 @@ export default function AdminUsersView({ users = [], roles = [], loading = false
         message={
           confirm?.kind === 'suspend'
             ? 'They will be signed out everywhere and cannot sign in until reactivated.'
-            : 'Their authenticator and recovery codes stop working. They must set up 2FA again at next sign-in.'
+            : 'Their authenticator stops working. They must set up 2FA again at next sign-in.'
         }
         confirmLabel={confirm?.kind === 'suspend' ? 'Suspend user' : 'Reset 2FA'}
       />

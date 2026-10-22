@@ -1,5 +1,4 @@
-// Level-1 tests for the approved-schema catalog rules, seed plan and the RBAC
-// cutover accessor (no database).
+// Level-1 tests for the approved-schema catalog rules and seed plan (no database).
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 
@@ -9,7 +8,6 @@ import { isGalleryPath, galleryError, addImage, promoteToMain, removeImage, refe
 import { parentError, deleteError, categoryUseError } from '../../src/server/catalog-v2/category-rules.js'
 import { productCreateSchema, priceSchema, categorySchema } from '../../src/server/catalog-v2/schemas.js'
 import { buildSeedPlanV2 } from '../../src/server/catalog-v2/seed-plan.js'
-import { adminRoleModel, adminPermissionModel, adminRolePermissionModel } from '../../src/server/rbac/models.js'
 
 const KEY = '12/0123456789abcdef0123456789abcdef.webp'
 const UP = `/media/products/${KEY}`
@@ -118,21 +116,5 @@ describe('seed plan v2', () => {
     assert.deepEqual(plan.customizerOptions.filter((o) => o.isDefault).map((o) => `${o.part}:${o.optionKey}`), ['case:black', 'dial:black', 'strap:black-black'])
     assert.deepEqual(plan.roles, ['Customer'])
     assert.deepEqual(plan.settings.map((s) => [s.key, s.value]), [['store_currency', 'USD']])
-  })
-})
-
-describe('RBAC cutover accessor (SC-1)', () => {
-  test('before the rename it uses role/permission/rolePermission', () => {
-    const legacy = { role: 'R', permission: 'P', rolePermission: 'RP' }
-    assert.equal(adminRoleModel(legacy), 'R')
-    assert.equal(adminPermissionModel(legacy), 'P')
-    assert.equal(adminRolePermissionModel(legacy), 'RP')
-  })
-  test('after the rename it always prefers the admin delegates (db.role becomes website roles)', () => {
-    const next = { role: 'WEBSITE', adminRole: 'AR', permission: undefined, adminPermission: 'AP', adminRolePermission: 'ARP' }
-    assert.equal(adminRoleModel(next), 'AR')
-    assert.equal(adminPermissionModel(next), 'AP')
-    assert.equal(adminRolePermissionModel(next), 'ARP')
-    assert.throws(() => adminRoleModel({}))
   })
 })

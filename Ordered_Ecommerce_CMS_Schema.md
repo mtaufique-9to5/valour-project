@@ -1,14 +1,26 @@
 # E-commerce and CMS Database Schema
 
-**Revision 2 — 2026-10-21.** Approved corrections SC-2 to SC-16 applied (see the change log at the end and
+**Revision 3 — 2026-10-21.** Target database `watchwebsite`. Approved corrections SC-2 to SC-16 and R3-1 to R3-3 applied (see the change log at the end and
 `docs/schema-corrections-proposal.md` for the reasoning). Target: MariaDB 10.4 (InnoDB, `utf8mb4_unicode_ci`,
 strict SQL mode, UTC), Prisma 7.10.1.
 
-The existing admin security tables (Better Auth `admin_users`, `admin_accounts`, `admin_sessions`,
-`admin_two_factors`, `admin_verifications`, `admin_rate_limits`, `admin_user_roles`, admin RBAC and
-`audit_logs`) are **retained outside this schema** (decision D1). Admin RBAC tables are to be renamed
-`admin_roles`, `admin_permissions`, `admin_role_permissions` (SC-1, planning only — separate migration approval).
-Website `roles` below are **separate from admin RBAC** and never grant admin-panel access (U5).
+**These 25 tables are the complete database** (owner decision R3-1). There are no separate admin tables:
+administrators are rows in `users` whose role grants admin-panel access (see `roles`). Sessions are signed,
+HttpOnly cookies (no session table); login lockout is enforced in application memory. Decisions D1, SC-1 and U5
+are superseded.
+
+**Admin access and security (R3-4, no structural change):**
+- Admin access is granted **explicitly per role**: the ids of authorised roles are stored in the protected
+  `general_settings` row `admin_role_ids` (JSON array). It starts empty; new and reactivated roles have no
+  access; `Customer` can never be added. There are no per-role permissions: an authorised role has full admin access.
+- Server-side safeguards: an admin cannot change their own role, deactivate themselves, reset their own MFA in the
+  panel or remove access from their own role; no change may leave zero active admins with a password and MFA.
+- Sessions: signed cookie (HMAC, 8 h) re-validated against the database on every request; it carries a fingerprint
+  of password, role, status, deletion and MFA, so changing any of them signs the user out everywhere. A single
+  session cannot be revoked on its own (no session table).
+- Password reset by email: signed link valid 15 minutes, never stored, bound to the current password hash (single
+  use); MFA stays required. Emergency recovery by a server-side CLI. No MFA recovery codes (no column).
+- No audit table: admin actions are written as sanitised `[audit]` lines to the server log.
 
 ## Table order
 
@@ -37,7 +49,7 @@ Independent parent tables appear first, followed by dependent tables. Every exte
 | 15 | `user_addresses` | `users` |
 | 16 | `carts` | `users` |
 | 17 | `orders` | `users` |
-| 18 | `blogs` | `categories`, `admin_users` (existing, D1) *(SC-13)* |
+| 18 | `blogs` | `categories`, `users` *(R3-3)* |
 | 19 | `cms_page_section_fields` | `cms_page_sections` |
 | 20 | `blog_tag` | `blogs`, `tags` |
 | 21 | `cart_items` | `carts`, `products` |
@@ -61,10 +73,10 @@ Independent parent tables appear first, followed by dependent tables. Every exte
 | Column | Data Type | Notes / Constraints |
 | --- | --- | --- |
 | `id` | `BIGINT UNSIGNED, PK` | Primary key; AUTO_INCREMENT |
-| `name` | `VARCHAR(100), NOT NULL, UNIQUE` | Website roles only (U5). Seed: `Customer`. `Admin`/`Editor` are not created unless a website feature is approved; they never grant admin-panel access. |
+| `name` | `VARCHAR(100), NOT NULL, UNIQUE` | *(R3-1, R3-4)* Roles are created and edited in the admin panel. A role has admin access only when its id is listed in `general_settings.admin_role_ids`; the built-in `Customer` role (guest checkouts) never can. |
 | `created_at` | `DATETIME(3), NOT NULL, DEFAULT CURRENT_TIMESTAMP(3)` | Record created |
 | `updated_at` | `DATETIME(3), NOT NULL, DEFAULT CURRENT_TIMESTAMP(3)` | Last update |
-| `deleted_at` | `DATETIME(3), NULL` | Soft delete; blocked while users reference the role |
+| `deleted_at` | `DATETIME(3), NULL` | Soft delete (= deactivated); blocked while users reference the role; removes its admin access |
 
 ## 2. `brands`
 
@@ -221,7 +233,7 @@ Indexes: `parent_id`, `(type, status, sort_order)`. The application rejects self
 
 ## 11. `users`
 
-Website customer records. Guest checkouts create passwordless records *(SC-7)*; these cannot sign in. No customer login in this phase.
+Customers and administrators *(R3-1)*. Guest checkouts create passwordless records with role `Customer` *(SC-7)*; these cannot sign in. Administrators sign in with email, password and TOTP. No customer login in this phase.
 
 | Column | Data Type | Notes / Constraints |
 | --- | --- | --- |
@@ -233,7 +245,9 @@ Website customer records. Guest checkouts create passwordless records *(SC-7)*; 
 | `phone` | `VARCHAR(30), NULL` | Phone number |
 | `email` | `VARCHAR(255), NOT NULL, UNIQUE` | Customer email (stored lower-case) |
 | `email_verified_at` | `DATETIME(3), NULL` | Email verification (required before any future account claim) |
-| `password` | `VARCHAR(255), NULL` | *(SC-7)* Hashed password only; NULL for guest records |
+| `password` | `VARCHAR(255), NULL` | *(SC-7)* argon2id hash only; NULL for guest records. Required for admin users |
+| `two_factor_secret` | `TEXT, NULL` | *(R3-2)* TOTP secret, encrypted by the application; NULL until MFA is set up |
+| `two_factor_enabled` | `BOOLEAN, NOT NULL, DEFAULT FALSE` | *(R3-2)* Admin-panel access requires TRUE |
 | `address` | `VARCHAR(255), NULL` | Default address |
 | `country` | `VARCHAR(100), NULL` | Country |
 | `city` | `VARCHAR(100), NULL` | City |
@@ -245,7 +259,7 @@ Website customer records. Guest checkouts create passwordless records *(SC-7)*; 
 | `updated_at` | `DATETIME(3), NOT NULL, DEFAULT CURRENT_TIMESTAMP(3)` | Last update |
 | `deleted_at` | `DATETIME(3), NULL` | Soft delete only; customers with orders are never hard-deleted (erasure anonymises) |
 
-`remember_token` removed *(SC-7)*. Indexes: `role_id`, `(status, created_at)`. A guest checkout never overwrites an existing record's profile.
+`remember_token` removed *(SC-7)*. Indexes: `role_id`, `(status, created_at)`. A guest checkout never overwrites an existing record's profile. Admin safeguards: an admin cannot change their own role, deactivate or delete themselves, and the last active admin with MFA cannot be removed.
 
 ## 12. `products`
 
@@ -394,12 +408,12 @@ Indexes: `(status, created_at)`, `(payment_status, created_at)`, `user_id`, `pla
 | `meta_description` | `TEXT, NULL` | SEO description |
 | `meta_keywords` | `TEXT, NULL` | SEO keywords |
 | `published_at` | `DATETIME(3), NULL` | Publish date |
-| `author_admin_id` | `VARCHAR(64), NULL, FK` | *(SC-13)* Replaces `author_id`; FK → `admin_users.id` (existing Better Auth admin, D1); ON DELETE SET NULL |
+| `author_id` | `BIGINT UNSIGNED, NULL, FK` | *(R3-3)* Author (an admin user); FK → `users.id`; ON DELETE SET NULL |
 | `created_at` | `DATETIME(3), NOT NULL, DEFAULT CURRENT_TIMESTAMP(3)` | Record created |
 | `updated_at` | `DATETIME(3), NOT NULL, DEFAULT CURRENT_TIMESTAMP(3)` | Last update |
 | `deleted_at` | `DATETIME(3), NULL` | Soft delete |
 
-Indexes: `(status, published_at)`, `category_id`, `author_admin_id`.
+Indexes: `(status, published_at)`, `category_id`, `author_id`.
 
 ## 19. `cms_page_section_fields`
 
@@ -547,3 +561,5 @@ UNIQUE: `(user_id, product_id, order_id)` *(SC-16)*. Index: `(product_id, status
 | --- | --- | --- |
 | 1 | — | Original approved schema (24 tables) |
 | 2 | 2026-10-21 | SC-2 `DATETIME(3)`; SC-3 custom watch options; SC-4 stock tracking and released quantities; SC-5 nullability, defaults, keys, indexes, CHECKs and delete rules; SC-6 checkout token, coupon snapshot/usage, payment uniqueness; SC-7 passwordless guest customers, `remember_token` removed; SC-8 `customizer_options` table; SC-9 newsletter consent; SC-10 order currency; SC-11 CMS page status; SC-12 public settings; SC-13 blog author → `admin_users`; SC-14 unique section fields; SC-15 rating range; SC-16 review per purchase; U4 independent fulfilment/payment states; U5 website roles separate from admin RBAC |
+| 3 | 2026-10-21 | R3-1 the 25 tables are the whole database in `watchwebsite`; admins live in `users`, D1/SC-1/U5 superseded; R3-2 `users.two_factor_secret`, `users.two_factor_enabled`; R3-3 `blogs.author_admin_id` → `author_id` FK `users.id` ON DELETE SET NULL |
+| 3.1 | 2026-10-22 | R3-4 admin access explicitly per role via `general_settings.admin_role_ids` (replaces the "all non-Customer roles" rule); signed-cookie sessions; email password reset; CLI recovery; server-log audit. No table or column changes |

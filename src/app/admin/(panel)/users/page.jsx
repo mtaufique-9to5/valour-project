@@ -1,34 +1,26 @@
 import { requirePagePermission } from '@/server/admin/context'
+import { requireAdmin } from '@/server/auth/guards'
 import { PERMISSIONS } from '@/server/rbac/permissions'
 import { db } from '@/server/db'
-import { adminRoleModel } from '@/server/rbac/models'
-import AdminUsersView from '@/admin/views/AdminUsersView'
+import { loadAdminRoleIds } from '@/server/auth/admin-roles'
+import { listAdminUsers } from '@/server/auth/admin-management'
+import AdminUsersClient from '@/admin/client/AdminUsersClient'
 
-const fmt = (d) => (d ? d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : null)
-
-// Read-only list. Inviting, suspending and MFA resets come with admin_user.manage
-// actions (server-side, audit-logged) in a later batch.
+// Staff = users whose role has admin access. Invited users have no password
+// until they use their set-password link; MFA is enrolled at first sign-in.
 export default async function AdminUsersPage() {
   await requirePagePermission(PERMISSIONS.ADMIN_USER_VIEW)
+  const { user } = await requireAdmin()
+  const ids = await loadAdminRoleIds(db)
   const [users, roles] = await Promise.all([
-    db.adminUser.findMany({
-      orderBy: { createdAt: 'asc' },
-      select: {
-        id: true, name: true, email: true, status: true, twoFactorEnabled: true,
-        roles: { select: { role: { select: { name: true } } } },
-        sessions: { select: { createdAt: true }, orderBy: { createdAt: 'desc' }, take: 1 },
-      },
-    }),
-    adminRoleModel(db).findMany({ orderBy: { id: 'asc' }, select: { id: true, name: true } }),
+    listAdminUsers(db, ids),
+    db.role.findMany({ where: { deletedAt: null }, orderBy: { id: 'asc' }, select: { id: true, name: true } }),
   ])
   const rows = users.map((u) => ({
-    id: u.id,
-    name: u.name,
-    email: u.email,
-    role: u.roles.map((r) => r.role.name).join(', ') || 'No role',
-    status: u.status === 'ACTIVE' ? 'Active' : 'Suspended',
-    mfa: u.twoFactorEnabled === true,
-    lastLogin: fmt(u.sessions[0]?.createdAt),
+    ...u,
+    status: !u.active ? 'Suspended' : !u.passwordSet ? 'Invited' : 'Active',
+    lastLogin: 'Not recorded',
   }))
-  return <AdminUsersView users={rows} roles={roles} />
+  const roleOptions = roles.map((r) => ({ id: String(r.id), name: ids.has(String(r.id)) ? `${r.name} (admin)` : r.name }))
+  return <AdminUsersClient users={rows} roles={roleOptions} selfId={user.id} />
 }

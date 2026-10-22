@@ -217,7 +217,11 @@ describe('order service', () => {
     const order = { id: 9n, status: 'processing', paymentStatus: 'pending', paymentMethod: 'bank_transfer', couponCode: 'SAVE', couponReleasedAt: null }
     const items = [{ id: 1n, productId: 1n, quantity: 2n, releasedQuantity: 0n, stockDeducted: 1 }, { id: 2n, productId: null, quantity: 1n, releasedQuantity: 1n, stockDeducted: 0 }]
     const tx = orderWorld(order, { items })
-    const r = await changeOrderStatus(tx, 9n, 'cancelled', ADMIN)
+    const logged = []
+    const info = console.info
+    console.info = (line) => logged.push(line)
+    let r
+    try { r = await changeOrderStatus(tx, 9n, 'cancelled', ADMIN) } finally { console.info = info }
     assert.equal(r.couponReleased, true)
     assert.deepEqual(r.released, [{ itemId: '1', quantity: 2, restored: 2 }])
     const order_ = tx.calls.findIndex((c) => /FROM orders .*FOR UPDATE/.test(c.sql ?? ''))
@@ -225,7 +229,7 @@ describe('order service', () => {
     const product = tx.calls.findIndex((c) => /FROM products .*FOR UPDATE/.test(c.sql ?? ''))
     const items_ = tx.calls.findIndex((c) => /FROM order_items .*FOR UPDATE/.test(c.sql ?? ''))
     assert.ok(order_ < coupon && coupon < product && product < items_, 'lock order: order -> coupon -> products -> items')
-    assert.equal(tx.audits()[0].action, 'order.cancel')
+    assert.equal(JSON.parse(logged[0].slice('[audit] '.length)).action, 'order.cancel')
   })
   test('payment status is not touched by fulfilment changes', async () => {
     const tx = orderWorld({ id: 9n, status: 'pending', paymentStatus: 'pending', paymentMethod: 'bank_transfer' })

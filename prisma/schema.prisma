@@ -1,564 +1,610 @@
-// VALOUR database schema (Prisma 7.10.1, MariaDB/MySQL).
-//
-// Connection URLs are not set here: Prisma 7 reads them from prisma.config.mjs,
-// which takes them from environment variables (.env.local locally).
-//
-// Conventions (MariaDB 10.4 on Windows uses lower_case_table_names=1):
-// - every table and column has an explicit lowercase/snake_case name (@@map/@map),
-//   so names are identical on Windows and case-sensitive Linux servers;
-// - every indexed string column has an explicit bounded length (@db.VarChar(n)),
-//   keeping index keys well under InnoDB's 3072-byte limit with utf8mb4.
-// - every connection enables strict SQL mode (src/server/db-config.js), so
-//   over-long values are rejected rather than truncated; string lengths are still
-//   validated in application code so users get a clear error.
+// DRAFT schema for database `watchwebsite` — Ordered_Ecommerce_CMS_Schema.md revision 3.
+// The 25 tables are the whole database (R3-1): no admin_* tables; administrators are users
+// whose role grants admin access. CHECK constraints are added by hand in the migration SQL.
+// Validate with: npx prisma validate --schema prisma/drafts/watchwebsite-schema.prisma
 
 generator client {
-  // JavaScript client generated into node_modules/.prisma/client, so the
-  // project stays JavaScript. Revisit (switch to "prisma-client") before Prisma 8.
   provider = "prisma-client-js"
 }
 
 datasource db {
-  // MariaDB uses Prisma's MySQL provider; queries run through @prisma/adapter-mariadb.
   provider = "mysql"
 }
 
-// ─── Role-based access control ──────────────────────────────────────────────
-// Roles and permissions are system data: created/changed only by the seed and
-// migrations (no admin UI deletion in the foundation). Permission keys checked in
-// code are constants that tests compare with the seed. An unknown or missing
-// permission always results in "deny".
+// ─── Part A: admin security (existing; D1) ───────────────────────────────────
 
+enum CategoryType {
+  blog
+  product
+}
+
+enum ProductType {
+  watch
+  strap
+  custom
+}
+
+enum ProductStatus {
+  draft
+  active
+  inactive
+}
+
+enum PageStatus {
+  draft
+  published
+}
+
+enum ModerationStatus {
+  pending
+  approved
+  rejected
+}
+
+enum BlogStatus {
+  draft
+  published
+  archived
+}
+
+enum CartStatus {
+  active
+  converted
+  abandoned
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum CouponType {
+  fixed
+  percentage
+}
+
+enum CustomizerPart {
+  case
+  dial
+  strap
+}
+
+enum CustomizerOptionStatus {
+  draft
+  active
+  inactive
+}
+
+// 1
 model Role {
-  id          Int              @id @default(autoincrement())
-  key         String           @unique @db.VarChar(64) // e.g. "SUPER_ADMIN"; referenced in code
-  name        String           @db.VarChar(100)
-  description String?          @db.VarChar(255)
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-  permissions RolePermission[]
-  users       AdminUserRole[]
+  id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name      String    @unique @db.VarChar(100)
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+  users     User[]
 
   @@map("roles")
 }
 
-model Permission {
-  id          Int              @id @default(autoincrement())
-  key         String           @unique @db.VarChar(100) // e.g. "product.price.update"; referenced in code
-  description String           @db.VarChar(255)
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-  roles       RolePermission[]
+// 2
+model Brand {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name        String    @unique @db.VarChar(150)
+  slug        String    @unique @db.VarChar(180)
+  description String?   @db.Text
+  logo        String?   @db.VarChar(255)
+  status      Boolean   @default(false)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(3)
+  products    Product[]
 
-  @@map("permissions")
+  @@index([status])
+  @@map("brands")
 }
 
-// Pure link rows: removed together with their role or permission.
-// (User-to-role assignment lives in AdminUserRole, which uses onDelete: Restrict
-// so an assigned role cannot be deleted.)
-model RolePermission {
-  roleId       Int        @map("role_id")
-  permissionId Int        @map("permission_id")
-  createdAt    DateTime   @default(now()) @map("created_at")
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Restrict)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+// 3
+model CmsPage {
+  id                  BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  pageTitle           String           @map("page_title") @db.VarChar(255)
+  pageSlug            String           @unique @map("page_slug") @db.VarChar(255)
+  pageMetaTitle       String?          @map("page_meta_title") @db.VarChar(255)
+  pageMetaDescription String?          @map("page_meta_description") @db.Text
+  status              PageStatus       @default(draft)
+  publishedAt         DateTime?        @map("published_at") @db.DateTime(3)
+  createdAt           DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt           DateTime         @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  sections            CmsPageSection[]
+  testimonials        Testimonial[]
 
-  @@id([roleId, permissionId])
-  @@index([permissionId])
-  @@map("role_permissions")
+  @@map("cms_pages")
 }
 
-// ─── Audit log ──────────────────────────────────────────────────────────────
-// Append-only by policy: written only through the future audit service
-// (recordAudit), in the same transaction as the change it records; the
-// application never updates or deletes rows. In production the runtime database
-// user gets only SELECT and INSERT on audit_logs.
-//
-// No foreign keys, so history survives user or role deletion. Rules enforced by
-// the audit service (application-level, not expressible here):
-// - actorType ADMIN requires actorId (the Better Auth user id) and actorLabel;
-//   SYSTEM and CLI events may leave actorId empty.
-// - before/after hold serialized JSON built from per-action ALLOWLISTED fields
-//   only, each limited to 60,000 bytes (UTF-8); string fields are trimmed to their
-//   column lengths before writing.
-// - Never stored: passwords or password hashes, session tokens, MFA secrets or
-//   recovery codes, API keys, connection strings, or unnecessary customer
-//   personal data.
-// Retention (provisional, pending legal/business review): 12 months; IP address
-// and user agent to be minimized after 90 days. No automated deletion yet.
+// 4
+model GeneralSetting {
+  id           BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  key          String   @unique @db.VarChar(150)
+  type         String   @db.VarChar(50)
+  value        String?  @db.LongText
+  fieldOptions Json?    @map("field_options")
+  isPublic     Boolean  @default(false) @map("is_public")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
 
-enum AuditActorType {
-  ADMIN // a signed-in administrator (actorId required)
-  SYSTEM // the application itself
-  CLI // server-side scripts (seed, create-first-admin)
+  @@map("general_settings")
 }
 
-model AuditLog {
-  id         Int            @id @default(autoincrement())
-  actorType  AuditActorType @map("actor_type")
-  actorId    String?        @map("actor_id") @db.VarChar(64) // Better Auth user ids are strings; no FK by design
-  actorLabel String?        @map("actor_label") @db.VarChar(255) // e.g. admin email at the time of the action
-  action     String         @db.VarChar(100) // "auth.login.success", "role.permission.grant", ...
-  targetType String?        @map("target_type") @db.VarChar(50)
-  targetId   String?        @map("target_id") @db.VarChar(64)
-  before     String?        @db.Text // serialized, validated JSON (allowlisted fields only)
-  after      String?        @db.Text
-  requestId  String?        @map("request_id") @db.VarChar(64)
-  ipAddress  String?        @map("ip_address") @db.VarChar(45) // fits IPv6
-  userAgent  String?        @map("user_agent") @db.VarChar(255)
-  createdAt  DateTime       @default(now()) @map("created_at")
+// 5
+model Newsletter {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  email          String    @unique @db.VarChar(255)
+  isSubscribed   Boolean   @default(false) @map("is_subscribed")
+  subscribedAt   DateTime? @map("subscribed_at") @db.DateTime(3)
+  consentAt      DateTime  @map("consent_at") @db.DateTime(3)
+  consentSource  String    @map("consent_source") @db.VarChar(50)
+  unsubscribedAt DateTime? @map("unsubscribed_at") @db.DateTime(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt      DateTime? @map("deleted_at") @db.DateTime(3)
 
-  @@index([actorId, createdAt])
-  @@index([targetType, targetId])
-  @@index([action, createdAt])
-  @@index([createdAt])
-  @@map("audit_logs")
+  @@index([isSubscribed, createdAt])
+  @@map("newsletters")
 }
 
-// ─── Admin authentication (Better Auth 1.7.8) ───────────────────────────────
-// Field names match Better Auth's core schema and two-factor plugin exactly
-// (read from the installed 1.7.8 package); models are mapped to lowercase admin_*
-// tables. Better Auth is configured with modelName adminUser/adminSession/
-// adminAccount/adminVerification/adminRateLimit and twoFactorTable adminTwoFactor.
-// IDs are generated by Better Auth (32-character strings); VarChar(64) also
-// matches audit_logs.actor_id. Long, unindexed values (user agents, tokens) use
-// TEXT so strict SQL mode never rejects a real-world value.
+// 6
+model ContactInquiry {
+  id           BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name         String    @db.VarChar(150)
+  email        String    @db.VarChar(255)
+  phone        String?   @db.VarChar(30)
+  subject      String?   @db.VarChar(255)
+  message      String    @db.Text
+  type         String    @default("contact") @db.VarChar(50)
+  extraData    Json?     @map("extra_data")
+  isRead       Boolean   @default(false) @map("is_read")
+  isReplied    Boolean   @default(false) @map("is_replied")
+  replyMessage String?   @map("reply_message") @db.Text
+  repliedAt    DateTime? @map("replied_at") @db.DateTime(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt    DateTime? @map("deleted_at") @db.DateTime(3)
 
-enum AdminStatus {
-  ACTIVE
-  DISABLED
+  @@index([isRead, createdAt])
+  @@index([type, createdAt])
+  @@index([email])
+  @@map("contact_inquiries")
 }
 
-model AdminUser {
-  id               String           @id @db.VarChar(64)
-  name             String           @db.VarChar(100)
-  email            String           @unique @db.VarChar(255)
-  emailVerified    Boolean          @default(false) @map("email_verified")
-  image            String?          @db.VarChar(255) // part of Better Auth's core schema; unused
-  twoFactorEnabled Boolean?         @default(false) @map("two_factor_enabled") // two-factor plugin
-  // VALOUR additions (server-owned; not accepted from Better Auth API input):
-  status           AdminStatus      @default(ACTIVE)
-  failedLoginCount Int              @default(0) @map("failed_login_count") // password-failure lockout
-  lockedUntil      DateTime?        @map("locked_until")
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
-  sessions         AdminSession[]
-  accounts         AdminAccount[]
-  twoFactors       AdminTwoFactor[]
-  roles            AdminUserRole[]
+// 7
+model Tag {
+  id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name      String    @unique @db.VarChar(100)
+  slug      String    @unique @db.VarChar(120)
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+  blogs     BlogTag[]
 
-  @@map("admin_users")
+  @@map("tags")
 }
 
-model AdminSession {
-  id        String    @id @db.VarChar(64)
-  token     String    @unique @db.VarChar(255)
-  expiresAt DateTime  @map("expires_at")
-  ipAddress String?   @map("ip_address") @db.VarChar(64)
-  userAgent String?   @map("user_agent") @db.Text
-  userId    String    @map("user_id") @db.VarChar(64)
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+// 8
+model Coupon {
+  id             BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  code           String     @unique @db.VarChar(100)
+  type           CouponType
+  value          Decimal    @db.Decimal(12, 2)
+  minOrderAmount Decimal    @default(0.00) @map("min_order_amount") @db.Decimal(12, 2)
+  maxDiscount    Decimal?   @map("max_discount") @db.Decimal(12, 2)
+  usageLimit     Int?       @map("usage_limit") @db.UnsignedInt
+  usedCount      Int        @default(0) @map("used_count") @db.UnsignedInt
+  startsAt       DateTime?  @map("starts_at") @db.DateTime(3)
+  expiresAt      DateTime?  @map("expires_at") @db.DateTime(3)
+  status         Boolean    @default(false)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime   @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
 
-  @@index([userId])
-  @@index([expiresAt]) // expired-session clean-up
-  @@map("admin_sessions")
+  @@index([status, expiresAt])
+  @@map("coupons")
 }
 
-model AdminAccount {
-  id                    String    @id @db.VarChar(64)
-  accountId             String    @map("account_id") @db.VarChar(255)
-  providerId            String    @map("provider_id") @db.VarChar(64) // "credential" for email/password
-  userId                String    @map("user_id") @db.VarChar(64)
-  accessToken           String?   @map("access_token") @db.Text // OAuth only; unused
-  refreshToken          String?   @map("refresh_token") @db.Text // OAuth only; unused
-  idToken               String?   @map("id_token") @db.Text // OAuth only; unused
-  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
-  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
-  scope                 String?   @db.Text
-  password              String?   @db.VarChar(255) // argon2id hash only (~100 chars)
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
-  user                  AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([providerId, accountId]) // VALOUR hardening: one account per provider identity
-  @@index([userId])
-  @@map("admin_accounts")
-}
-
-model AdminVerification {
-  id         String   @id @db.VarChar(64)
-  identifier String   @db.VarChar(255)
-  value      String   @db.Text
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  @@index([identifier])
-  @@index([expiresAt]) // clean-up
-  @@map("admin_verifications")
-}
-
-// Two-factor plugin: TOTP secret and backup codes are stored encrypted by Better Auth.
-model AdminTwoFactor {
-  id                      String    @id @db.VarChar(64)
-  secret                  String    @db.VarChar(255)
-  backupCodes             String    @map("backup_codes") @db.Text
-  userId                  String    @map("user_id") @db.VarChar(64)
-  verified                Boolean?  @default(true)
-  failedVerificationCount Int?      @default(0) @map("failed_verification_count")
-  lockedUntil             DateTime? @map("locked_until")
-  user                    AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([secret])
-  @@index([userId])
-  @@map("admin_two_factors")
-}
-
-// Better Auth database rate limiting (rateLimit.storage = "database").
-model AdminRateLimit {
-  id          String @id @db.VarChar(64)
-  key         String @unique @db.VarChar(255)
-  count       Int
-  lastRequest BigInt @map("last_request")
-
-  @@map("admin_rate_limits")
-}
-
-// VALOUR RBAC: which roles an administrator holds. A role that is still assigned
-// cannot be deleted (Restrict); removing an admin user removes its assignments.
-model AdminUserRole {
-  userId     String    @map("user_id") @db.VarChar(64)
-  roleId     Int       @map("role_id")
-  assignedAt DateTime  @default(now()) @map("assigned_at")
-  assignedBy String?   @map("assigned_by") @db.VarChar(64) // admin id or null for CLI; no FK (history)
-  user       AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
-  role       Role      @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  @@id([userId, roleId])
-  @@index([roleId])
-  @@map("admin_user_roles")
-}
-
-// ─── Catalog, pricing, inventory, orders (PROPOSAL) ─────────────────────────
-// Mirrors src/data/catalog.js. Rules:
-// - Money is Int minor units (cents) + CHAR(3) currency: exact, no Decimal
-//   objects to serialize across server/client boundaries, trivially summed.
-// - No "Price on request": an ACTIVE product always has a confirmed USD price
-//   > 0 (enforced in src/server/catalog/product-rules.js + actions). amount_minor
-//   NULL survives only on legacy DRAFT rows (the imported Custom Watch).
-// - Stock: inventory.tracking_mode NOT_TRACKED => quantity_on_hand NULL;
-//   TRACKED => integer >= 0. Never defaulted to 0.
-// - Business history is never cascade-deleted: products are ARCHIVED, not
-//   deleted; ledgers/order lines use Restrict or SetNull. Actor ids are Better
-//   Auth admin ids without FK (same policy as audit_logs).
-
-enum ProductType {
-  WATCH
-  STRAP
-  CUSTOM // legacy only: the imported "Custom Watch"; cannot be created in admin
-}
-
-enum ProductStatus {
-  DRAFT
-  ACTIVE
-  ARCHIVED
-}
-
-model Collection {
-  id        Int       @id @default(autoincrement())
-  slug      String    @unique @db.VarChar(100) // "lucent"
-  name      String    @db.VarChar(150) // "Lucent Collection"
-  position  Int       @default(0)
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  products  Product[]
-
-  @@map("collections")
-}
-
-model Product {
-  id           Int                   @id @default(autoincrement())
-  type         ProductType
-  // Per-type id used by existing carts ("watch:1" = type WATCH, legacy_id 1).
-  legacyId     Int?                  @map("legacy_id")
-  slug         String                @unique @db.VarChar(120)
-  // "LUC-01", "P-1". NULL for the Custom Watch: catalog.js gives it no ref
-  // (unique indexes allow several NULLs).
-  // SKU in the admin (uppercase A-Z0-9-, max 32, validated in code).
-  ref          String?               @unique @db.VarChar(32)
-  name         String                @db.VarChar(150)
-  // Plain-text admin description. A column (not ProductContent JSON) because it
-  // is a first-class editable field: no JSON parse/validate round-trip on every
-  // edit. ProductContent keeps the storefront's presentational structures.
-  description  String?               @db.Text
-  legacyName   String?               @map("legacy_name") @db.VarChar(150)
-  subtitle     String?               @db.VarChar(150)
-  status       ProductStatus         @default(DRAFT)
-  position     Int                   @default(0) // catalog order (related products follow it)
-  collectionId Int?                  @map("collection_id")
-  movement     String?               @db.VarChar(50)
-  material     String?               @db.VarChar(50)
-  color        String?               @db.VarChar(50)
-  accent       String?               @db.VarChar(9) // "#FACC15"
-  limited      Boolean               @default(false)
-  edition      String?               @db.VarChar(50)
-  tagline      String?               @db.VarChar(255)
-  createdAt    DateTime              @default(now()) @map("created_at")
-  updatedAt    DateTime              @updatedAt @map("updated_at")
-  collection   Collection?           @relation(fields: [collectionId], references: [id], onDelete: SetNull, onUpdate: Restrict)
-  // Presentational storefront content lives in a 1:1 table (see ProductContent).
-  content      ProductContent?
-  images       ProductImage[]
-  prices       Price[]
-  priceChanges PriceChange[]
-  inventory    Inventory?
-  adjustments  InventoryAdjustment[]
-  orderItems   OrderItem[]
-
-  @@unique([type, legacyId])
-  @@index([status, type, position])
-  @@index([collectionId])
-  @@index([createdAt])
-  @@map("products")
-}
-
-// One row per product. Strap description/specs (catalog.js STRAP_DESCRIPTION /
-// STRAP_SPECS) are copied into each strap's row so straps can diverge later.
-// Description runs, specs, editions, pdpSubtitle, headings, detail1, ... as
-// validated JSON: admin list queries never load it, and its shape can evolve
-// with the storefront without migrations.
-model ProductContent {
-  productId Int      @id @map("product_id")
-  data      String   @db.Text // serialized JSON, validated by a schema in code
-  updatedAt DateTime @updatedAt @map("updated_at")
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  @@map("product_contents")
-}
-
-enum ImageRole {
-  MAIN // the single primary image (is_primary = true)
-  GALLERY
-}
-
-enum ImageSource {
-  STATIC // legacy file under public/ (url = "/images/...")
-  UPLOAD // admin upload in storage/uploads/products (storage_key)
-}
-
-// Exactly one MAIN (is_primary) per product is enforced in code inside a
-// transaction that locks the product row (MySQL has no partial unique index).
-// legacy_role keeps the catalog.js slot (CARD/MAIN/SECONDARY/THUMBNAIL) so the
-// storefront switch can reproduce the current pages exactly.
-model ProductImage {
-  id         Int         @id @default(autoincrement())
-  productId  Int         @map("product_id")
-  source     ImageSource
-  role       ImageRole
-  isPrimary  Boolean     @default(false) @map("is_primary")
-  position   Int         @default(0)
-  url        String?     @db.VarChar(500) // STATIC only
-  storageKey String?     @unique @map("storage_key") @db.VarChar(200) // UPLOAD only: "<productId>/<32 hex>.<ext>"
-  mime       String?     @db.VarChar(32)
-  bytes      Int?
-  width      Int?
-  height     Int?
-  alt        String?     @db.VarChar(255)
-  legacyRole String?     @map("legacy_role") @db.VarChar(16)
-  createdBy  String?     @map("created_by") @db.VarChar(64) // admin id; no FK (history)
-  createdAt  DateTime    @default(now()) @map("created_at")
-  updatedAt  DateTime    @updatedAt @map("updated_at")
-  product    Product     @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  @@index([productId, role, position])
-  @@map("product_images")
-}
-
-// Current price per product and currency. USD only for now (column stays CHAR(3)).
-// amount_minor NULL only for legacy DRAFT rows; such a product cannot be ACTIVE.
-model Price {
-  id          Int      @id @default(autoincrement())
-  productId   Int      @map("product_id")
-  currency    String   @default("USD") @db.Char(3)
-  amountMinor Int?     @map("amount_minor") // cents; 52500 = $525.00
-  confirmed   Boolean  @default(false) // only confirmed prices are sold
-  effectiveAt DateTime @default(now()) @map("effective_at")
-  updatedBy   String?  @map("updated_by") @db.VarChar(64)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  @@unique([productId, currency])
-  @@map("prices")
-}
-
-// Append-only price history.
-model PriceChange {
-  id             Int      @id @default(autoincrement())
-  productId      Int      @map("product_id")
-  currency       String   @db.Char(3)
-  oldAmountMinor Int?     @map("old_amount_minor")
-  newAmountMinor Int?     @map("new_amount_minor")
-  oldConfirmed   Boolean? @map("old_confirmed")
-  newConfirmed   Boolean  @map("new_confirmed")
-  reason         String?  @db.VarChar(255)
-  actorId        String?  @map("actor_id") @db.VarChar(64) // no FK (history)
-  createdAt      DateTime @default(now()) @map("created_at")
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  @@index([productId, createdAt])
-  @@map("price_changes")
-}
-
-enum TrackingMode {
-  TRACKED
-  NOT_TRACKED
-}
-
-model Inventory {
-  productId         Int          @id @map("product_id")
-  trackingMode      TrackingMode @default(NOT_TRACKED) @map("tracking_mode")
-  quantityOnHand    Int?         @map("quantity_on_hand") // NULL iff NOT_TRACKED
-  reserved          Int          @default(0) // for open-order reservations; unused for now
-  lowStockThreshold Int?         @map("low_stock_threshold")
-  updatedBy         String?      @map("updated_by") @db.VarChar(64)
-  updatedAt         DateTime     @updatedAt @map("updated_at")
-  product           Product      @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  @@map("inventory")
-}
-
-enum InventoryReason {
-  INITIAL_COUNT
-  RESTOCK
-  SALE
-  RETURN
-  DAMAGE
-  CORRECTION
-}
-
-// Append-only stock ledger.
-model InventoryAdjustment {
-  id            Int             @id @default(autoincrement())
-  productId     Int             @map("product_id")
-  delta         Int
-  quantityAfter Int?            @map("quantity_after")
-  reason        InventoryReason
-  note          String?         @db.VarChar(255)
-  orderId       Int?            @map("order_id") // no FK; links SALE/RETURN rows
-  actorId       String?         @map("actor_id") @db.VarChar(64)
-  createdAt     DateTime        @default(now()) @map("created_at")
-  product       Product         @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  @@index([productId, createdAt])
-  @@map("inventory_adjustments")
-}
-
-enum CustomizerPart {
-  CASE
-  DIAL
-  STRAP
-}
-
-// Customizer options. option_id is the stable id stored in carts ("grey-teal").
+// 9 (SC-8)
 model CustomizerOption {
-  id        Int            @id @default(autoincrement())
+  id        BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
   part      CustomizerPart
-  optionId  String         @map("option_id") @db.VarChar(50)
-  name      String         @db.VarChar(100)
-  imageUrl  String         @map("image_url") @db.VarChar(500)
-  position  Int            @default(0)
-  isDefault Boolean        @default(false) @map("is_default")
-  active    Boolean        @default(true)
-  createdAt DateTime       @default(now()) @map("created_at")
-  updatedAt DateTime       @updatedAt @map("updated_at")
+  optionKey String                 @map("option_key") @db.VarChar(50)
+  name      String                 @db.VarChar(100)
+  image     String                 @db.VarChar(255)
+  sortOrder Int                    @default(0) @map("sort_order")
+  status    CustomizerOptionStatus @default(draft)
+  isDefault Boolean                @default(false) @map("is_default")
+  createdAt DateTime               @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime               @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
 
-  @@unique([part, optionId])
+  @@unique([part, optionKey])
+  @@index([part, status, sortOrder])
   @@map("customizer_options")
 }
 
-// Minimal PII: no addresses or payment data here. Guest checkout creates or
-// matches a Customer by email (lowercased).
-model Customer {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique @db.VarChar(255)
-  name      String?  @db.VarChar(150)
-  phone     String?  @db.VarChar(32)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  orders    Order[]
+// 10
+model Category {
+  id          BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  parentId    BigInt?      @map("parent_id") @db.UnsignedBigInt
+  name        String       @db.VarChar(150)
+  slug        String       @unique @db.VarChar(180)
+  description String?      @db.Text
+  type        CategoryType
+  image       String?      @db.VarChar(255)
+  status      Boolean      @default(false)
+  sortOrder   Int          @default(0) @map("sort_order")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime?    @map("deleted_at") @db.DateTime(3)
+  parent      Category?    @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children    Category[]   @relation("CategoryTree")
+  products    Product[]
+  blogs       Blog[]
 
-  @@index([createdAt])
-  @@map("customers")
+  @@index([parentId])
+  @@index([type, status, sortOrder])
+  @@map("categories")
 }
 
-enum OrderStatus {
-  PENDING
-  PAID
-  FULFILLED
-  CANCELLED
-  REFUNDED
+// 11
+model User {
+  id               BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  roleId           BigInt          @map("role_id") @db.UnsignedBigInt
+  firstName        String          @map("first_name") @db.VarChar(100)
+  lastName         String?         @map("last_name") @db.VarChar(100)
+  name             String?         @db.VarChar(200)
+  phone            String?         @db.VarChar(30)
+  email            String          @unique @db.VarChar(255)
+  emailVerifiedAt  DateTime?       @map("email_verified_at") @db.DateTime(3)
+  password         String?         @db.VarChar(255) // SC-7: NULL for guest customers
+  twoFactorSecret  String?         @map("two_factor_secret") @db.Text // R3-2: encrypted by the application
+  twoFactorEnabled Boolean         @default(false) @map("two_factor_enabled") // R3-2
+  address          String?         @db.VarChar(255)
+  country          String?         @db.VarChar(100)
+  city             String?         @db.VarChar(100)
+  state            String?         @db.VarChar(100)
+  zip              String?         @db.VarChar(20)
+  image            String?         @db.VarChar(255)
+  status           Boolean         @default(true)
+  createdAt        DateTime        @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime?       @map("deleted_at") @db.DateTime(3)
+  role             Role            @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  addresses        UserAddress[]
+  carts            Cart[]
+  orders           Order[]
+  wishlists        Wishlist[]
+  reviews          ProductReview[]
+  blogs            Blog[] // R3-3
+
+  @@index([roleId])
+  @@index([status, createdAt])
+  @@map("users")
 }
 
-// No tax, shipping, discount or address fields yet (Phase B). Currency: USD only.
+// 12
+model Product {
+  id               BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  categoryId       BigInt?         @map("category_id") @db.UnsignedBigInt
+  brandId          BigInt?         @map("brand_id") @db.UnsignedBigInt
+  name             String          @db.VarChar(255)
+  slug             String          @unique @db.VarChar(255)
+  sku              String          @unique @db.VarChar(100)
+  shortDescription String?         @map("short_description") @db.Text
+  longDescription  String?         @map("long_description") @db.LongText
+  additionalInfo   Json?           @map("additional_info")
+  type             ProductType
+  stock            Int             @default(0) @db.UnsignedInt
+  trackStock       Boolean         @default(false) @map("track_stock")
+  basePrice        Decimal         @map("base_price") @db.Decimal(12, 2)
+  salePrice        Decimal?        @map("sale_price") @db.Decimal(12, 2)
+  mainImage        String?         @map("main_image") @db.VarChar(255)
+  images           Json?
+  metaTitle        String?         @map("meta_title") @db.VarChar(255)
+  metaDescription  String?         @map("meta_description") @db.Text
+  status           ProductStatus   @default(draft)
+  isFeatured       Boolean         @default(false) @map("is_featured")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime?       @map("deleted_at") @db.DateTime(3)
+  category         Category?       @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  brand            Brand?          @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cartItems        CartItem[]
+  orderItems       OrderItem[]
+  wishlists        Wishlist[]
+  reviews          ProductReview[]
+
+  @@index([status, type])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([isFeatured, status])
+  @@map("products")
+}
+
+// 13
+model CmsPageSection {
+  id               BigInt                @id @default(autoincrement()) @db.UnsignedBigInt
+  cmsPageId        BigInt                @map("cms_page_id") @db.UnsignedBigInt
+  sectionName      String                @map("section_name") @db.VarChar(150)
+  sectionType      String                @map("section_type") @db.VarChar(100)
+  sectionSortOrder Int                   @default(0) @map("section_sort_order") @db.UnsignedInt
+  createdAt        DateTime              @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime              @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  page             CmsPage               @relation(fields: [cmsPageId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  fields           CmsPageSectionField[]
+
+  @@index([cmsPageId, sectionSortOrder])
+  @@map("cms_page_sections")
+}
+
+// 14
+model Testimonial {
+  id          BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  cmsPageId   BigInt?          @map("cms_page_id") @db.UnsignedBigInt
+  name        String           @db.VarChar(150)
+  designation String?          @db.VarChar(150)
+  company     String?          @db.VarChar(150)
+  message     String           @db.Text
+  image       String?          @db.VarChar(255)
+  rating      Int?             @db.UnsignedTinyInt
+  status      ModerationStatus @default(pending)
+  sortOrder   Int              @default(0) @map("sort_order")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime?        @map("deleted_at") @db.DateTime(3)
+  page        CmsPage?         @relation(fields: [cmsPageId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+
+  @@index([status, sortOrder])
+  @@index([cmsPageId])
+  @@map("testimonials")
+}
+
+// 15
+model UserAddress {
+  id           BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  userId       BigInt   @map("user_id") @db.UnsignedBigInt
+  name         String   @db.VarChar(150)
+  phone        String   @db.VarChar(30)
+  addressLine1 String   @map("address_line_1") @db.VarChar(255)
+  addressLine2 String?  @map("address_line_2") @db.VarChar(255)
+  city         String   @db.VarChar(100)
+  state        String?  @db.VarChar(100)
+  country      String   @db.VarChar(100)
+  zip          String?  @db.VarChar(20)
+  isDefault    Boolean  @default(false) @map("is_default")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([userId, isDefault])
+  @@map("user_addresses")
+}
+
+// 16
+model Cart {
+  id        BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt?    @map("user_id") @db.UnsignedBigInt
+  sessionId String?    @map("session_id") @db.VarChar(255)
+  status    CartStatus @default(active)
+  expiresAt DateTime?  @map("expires_at") @db.DateTime(3)
+  createdAt DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  items     CartItem[]
+
+  @@index([sessionId])
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@map("carts")
+}
+
+// 17
 model Order {
-  id            Int         @id @default(autoincrement())
-  number        String      @unique @db.VarChar(32) // human-facing, e.g. "VAL-000123"
-  customerId    Int?        @map("customer_id") // nullable for safety; checkout always sets it
-  status        OrderStatus @default(PENDING)
-  currency      String      @default("USD") @db.Char(3)
-  subtotalMinor Int         @map("subtotal_minor")
-  totalMinor    Int         @map("total_minor")
-  placedAt      DateTime    @default(now()) @map("placed_at")
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  customer      Customer?   @relation(fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  items         OrderItem[]
+  id               BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  userId           BigInt?         @map("user_id") @db.UnsignedBigInt
+  orderNumber      String          @unique @map("order_number") @db.VarChar(50)
+  billingDetails   Json            @map("billing_details")
+  shippingDetails  Json            @map("shipping_details")
+  shippingMethod   String?         @map("shipping_method") @db.VarChar(100)
+  shippingAmount   Decimal         @default(0.00) @map("shipping_amount") @db.Decimal(12, 2)
+  discount         Decimal         @default(0.00) @db.Decimal(12, 2)
+  subtotal         Decimal         @db.Decimal(12, 2)
+  taxAmount        Decimal         @default(0.00) @map("tax_amount") @db.Decimal(12, 2)
+  total            Decimal         @db.Decimal(12, 2)
+  currency         String          @db.Char(3) // SC-10: from setting store_currency
+  status           OrderStatus     @default(pending)
+  paymentStatus    PaymentStatus   @default(pending) @map("payment_status")
+  paymentMethod    String?         @map("payment_method") @db.VarChar(100)
+  paymentReference String?         @map("payment_reference") @db.VarChar(255)
+  notes            String?         @db.Text
+  checkoutToken    String?         @unique @map("checkout_token") @db.VarChar(64)
+  couponCode       String?         @map("coupon_code") @db.VarChar(100)
+  couponReleasedAt DateTime?       @map("coupon_released_at") @db.DateTime(3)
+  placedAt         DateTime?       @map("placed_at") @db.DateTime(3)
+  createdAt        DateTime        @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime?       @map("deleted_at") @db.DateTime(3) // never set by the application
+  user             User?           @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  items            OrderItem[]
+  payments         Payment[]
+  reviews          ProductReview[]
 
-  @@index([status, placedAt])
-  @@index([customerId, placedAt])
+  @@index([status, createdAt])
+  @@index([paymentStatus, createdAt])
+  @@index([userId])
   @@index([placedAt])
   @@map("orders")
 }
 
-// Order-number counter: "VAL-000123" = name "order", value 123. Incremented
-// in the same transaction that creates the order, so numbers are never reused.
-model OrderSequence {
-  name  String @id @db.VarChar(32)
-  value Int    @default(0)
+// 18 (SC-13: author is an admin user)
+model Blog {
+  id              BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  categoryId      BigInt?    @map("category_id") @db.UnsignedBigInt
+  title           String     @db.VarChar(255)
+  slug            String     @unique @db.VarChar(255)
+  description     String     @db.LongText
+  status          BlogStatus @default(draft)
+  featuredImage   String?    @map("featured_image") @db.VarChar(255)
+  images          Json?
+  metaTitle       String?    @map("meta_title") @db.VarChar(255)
+  metaDescription String?    @map("meta_description") @db.Text
+  metaKeywords    String?    @map("meta_keywords") @db.Text
+  publishedAt     DateTime?  @map("published_at") @db.DateTime(3)
+  authorId        BigInt?    @map("author_id") @db.UnsignedBigInt // R3-3
+  createdAt       DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt       DateTime?  @map("deleted_at") @db.DateTime(3)
+  category        Category?  @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  author          User?      @relation(fields: [authorId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  tags            BlogTag[]
 
-  @@map("order_sequences")
+  @@index([status, publishedAt])
+  @@index([categoryId])
+  @@index([authorId])
+  @@map("blogs")
 }
 
-// Snapshot of what was sold; survives product edits and archival.
+// 19
+model CmsPageSectionField {
+  id               BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  cmsPageSectionId BigInt         @map("cms_page_section_id") @db.UnsignedBigInt
+  fieldGroup       String         @default("") @map("field_group") @db.VarChar(100)
+  fieldName        String         @map("field_name") @db.VarChar(150)
+  fieldType        String         @map("field_type") @db.VarChar(50)
+  fieldValue       String?        @map("field_value") @db.LongText
+  fieldOptions     Json?          @map("field_options")
+  createdAt        DateTime       @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  section          CmsPageSection @relation(fields: [cmsPageSectionId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([cmsPageSectionId, fieldGroup, fieldName])
+  @@map("cms_page_section_fields")
+}
+
+// 20
+model BlogTag {
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  blogId    BigInt   @map("blog_id") @db.UnsignedBigInt
+  tagId     BigInt   @map("tag_id") @db.UnsignedBigInt
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([blogId, tagId])
+  @@index([tagId])
+  @@map("blog_tag")
+}
+
+// 21
+model CartItem {
+  id          BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  cartId      BigInt   @map("cart_id") @db.UnsignedBigInt
+  productId   BigInt   @map("product_id") @db.UnsignedBigInt
+  quantity    Int      @default(1) @db.UnsignedInt
+  options     Json?
+  optionsHash String   @default("") @map("options_hash") @db.Char(64)
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  cart        Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([cartId, productId, optionsHash])
+  @@index([productId])
+  @@map("cart_items")
+}
+
+// 22
 model OrderItem {
-  id             Int         @id @default(autoincrement())
-  orderId        Int         @map("order_id")
-  productId      Int?        @map("product_id")
-  productType    ProductType @map("product_type")
-  productName    String      @map("product_name") @db.VarChar(150)
-  productRef     String?     @map("product_ref") @db.VarChar(40)
-  options        String?     @db.Text // JSON snapshot, e.g. custom watch case/dial/strap names
-  unitPriceMinor Int         @map("unit_price_minor")
-  quantity       Int
-  lineTotalMinor Int         @map("line_total_minor")
-  createdAt      DateTime    @default(now()) @map("created_at")
-  order          Order       @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  product        Product?    @relation(fields: [productId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  id               BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  orderId          BigInt   @map("order_id") @db.UnsignedBigInt
+  productId        BigInt?  @map("product_id") @db.UnsignedBigInt
+  productName      String   @map("product_name") @db.VarChar(255)
+  sku              String?  @db.VarChar(100)
+  productImage     String?  @map("product_image") @db.VarChar(255)
+  price            Decimal  @db.Decimal(12, 2)
+  quantity         Int      @db.UnsignedInt
+  subtotal         Decimal  @db.Decimal(12, 2)
+  discount         Decimal  @default(0.00) @db.Decimal(12, 2)
+  total            Decimal  @db.Decimal(12, 2)
+  options          Json?
+  stockDeducted    Boolean  @default(false) @map("stock_deducted")
+  releasedQuantity Int      @default(0) @map("released_quantity") @db.UnsignedInt
+  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product          Product? @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([orderId])
   @@index([productId])
   @@map("order_items")
 }
 
-model AdminSetting {
-  key       String   @id @db.VarChar(100)
-  value     String   @db.Text
-  updatedBy String?  @map("updated_by") @db.VarChar(64)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+// 23
+model Payment {
+  id            BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  orderId       BigInt        @map("order_id") @db.UnsignedBigInt
+  transactionId String?       @map("transaction_id") @db.VarChar(255)
+  paymentMethod String        @map("payment_method") @db.VarChar(100)
+  amount        Decimal       @db.Decimal(12, 2)
+  status        PaymentStatus @default(pending)
+  paidAt        DateTime?     @map("paid_at") @db.DateTime(3)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
-  @@map("admin_settings")
+  @@unique([paymentMethod, transactionId])
+  @@index([orderId])
+  @@index([status, createdAt])
+  @@map("payments")
+}
+
+// 24
+model Wishlist {
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt   @map("user_id") @db.UnsignedBigInt
+  productId BigInt   @map("product_id") @db.UnsignedBigInt
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@map("wishlists")
+}
+
+// 25 (SC-16)
+model ProductReview {
+  id        BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt           @map("user_id") @db.UnsignedBigInt
+  productId BigInt           @map("product_id") @db.UnsignedBigInt
+  orderId   BigInt           @map("order_id") @db.UnsignedBigInt
+  rating    Int              @db.UnsignedTinyInt
+  review    String?          @db.Text
+  status    ModerationStatus @default(pending)
+  createdAt DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime         @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  order     Order            @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([userId, productId, orderId])
+  @@index([productId, status])
+  @@map("product_reviews")
 }

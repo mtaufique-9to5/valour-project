@@ -8,7 +8,8 @@ import { Alert } from '../Alert'
 import { FormField, Input } from '../FormField'
 
 // onSubmit({ method: 'totp' | 'recovery', code }); onCancel optional (back to sign-in).
-export default function MfaVerify({ onSubmit, onCancel, loading = false, error }) {
+// allowRecovery=false hides the recovery-code option (no recovery codes are issued).
+export default function MfaVerify({ onSubmit, onCancel, loading = false, error, allowRecovery = true }) {
   const [method, setMethod] = useState('totp')
   const [code, setCode] = useState('')
   const isTotp = method === 'totp'
@@ -53,9 +54,11 @@ export default function MfaVerify({ onSubmit, onCancel, loading = false, error }
           Verify
         </Button>
         <div className="va-row va-between">
-          <button type="button" className="va-link-btn" onClick={switchMethod}>
-            {isTotp ? 'Use a recovery code' : 'Use authenticator app'}
-          </button>
+          {allowRecovery ? (
+            <button type="button" className="va-link-btn" onClick={switchMethod}>
+              {isTotp ? 'Use a recovery code' : 'Use authenticator app'}
+            </button>
+          ) : <span />}
           {onCancel && (
             <button type="button" className="va-link-btn" onClick={onCancel}>Back to sign in</button>
           )}

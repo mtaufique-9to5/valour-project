@@ -1,5 +1,5 @@
-// Audit service: the only writer of audit_logs. Call it with the same
-// transaction as the change it records: recordAudit(tx, {...}).
+// Audit service. Revision 3 has no audit table: entries go to the server log.
+// Call it with the transaction of the change it records: recordAudit(tx, {...}).
 // Pure helpers are exported for unit tests.
 import 'server-only'
 
@@ -163,7 +163,14 @@ export function buildAuditData(entry, { minimize = false } = {}) {
  *   before, after, requestId, ipAddress, userAgent }
  * @param {{ minimize?: boolean }} [options] minimize: store a reduced IP address
  */
-export async function recordAudit(client, entry, options) {
-  if (!client?.auditLog) throw new Error('audit: a Prisma client or transaction is required')
-  return client.auditLog.create({ data: buildAuditData(entry, options), select: { id: true } })
+/**
+ * Record an admin action. Revision 3 has no audit table (owner decision), so the
+ * validated, sanitised entry is written as one JSON line to the server log
+ * ("[audit] {...}"); sensitive keys are already removed by buildAuditData.
+ * The first argument (client/transaction) is kept for call-site compatibility.
+ */
+export async function recordAudit(_client, entry, options) {
+  const data = buildAuditData(entry, options)
+  console.info('[audit] ' + JSON.stringify({ at: new Date().toISOString(), ...data }))
+  return { id: null }
 }

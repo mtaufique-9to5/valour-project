@@ -10,7 +10,8 @@ import { FormField, Input } from '../FormField'
 // onSubmit({ email, password }) is called by the parent, which owns the request.
 // error: a generic message only (never say which field was wrong).
 // lockedUntil: Date/string when the account is temporarily locked.
-export default function LoginForm({ onSubmit, loading = false, error, lockedUntil, defaultEmail = '' }) {
+// footer: optional node shown under the button (e.g. a "Forgot password?" link).
+export default function LoginForm({ onSubmit, loading = false, error, lockedUntil, defaultEmail = '', footer }) {
   const [email, setEmail] = useState(defaultEmail)
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
@@ -61,6 +62,7 @@ export default function LoginForm({ onSubmit, loading = false, error, lockedUnti
         <Button type="submit" variant="primary" size="lg" block loading={loading} disabled={locked} icon={Lock}>
           Sign in
         </Button>
+        {footer}
       </form>
     </AuthCard>
   )

@@ -510,3 +510,6 @@
 .va-form-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
 .va-img-tile.va-is-over { border-color: var(--va-gold); }
 @media (max-width: 480px) { .va-price-row { grid-template-columns: minmax(0, 1fr); } }
+
+/* Small centred note under auth forms (forgot password, back to sign in). */
+.va-auth-footnote { margin: 12px 0 0; text-align: center; font-size: 13px; }

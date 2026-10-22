@@ -25,3 +25,16 @@ export function assertAuthUrl(url) {
   }
   return url
 }
+
+/**
+ * Auth settings for the watchwebsite auth module. AUTH_SECRET / APP_URL are the
+ * names going forward; the previous BETTER_AUTH_* names are still accepted so an
+ * existing .env.local keeps working. Values are validated, never logged.
+ */
+export function getAuthConfig(env = process.env) {
+  const secret = env.AUTH_SECRET || env.BETTER_AUTH_SECRET
+  const appUrl = env.APP_URL || env.BETTER_AUTH_URL
+  if (!secret || secret.length < MIN_SECRET_LENGTH) throw new Error(`AUTH_SECRET must be set (at least ${MIN_SECRET_LENGTH} characters)`)
+  assertAuthUrl(appUrl)
+  return { secret, appUrl: new URL(appUrl).origin, secure: new URL(appUrl).protocol === 'https:' || env.NODE_ENV === 'production' }
+}
