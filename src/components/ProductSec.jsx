@@ -9,14 +9,14 @@ import { Autoplay, Pagination } from 'swiper/modules'
 import 'swiper/css';
 import 'swiper/css/pagination';
 import Link from 'next/link'
-import { useSelector } from 'react-redux'
 import { getProductHref } from '@/app/features/product/productUrl'
 
 
 gsap.registerPlugin(ScrollTrigger)
 
-const ProductSec = () => {
-  const products = useSelector((state) => state.product.value)
+// watches: published database watches plus the static catalog watches (from the page).
+const ProductSec = ({ watches = [] }) => {
+  const products = watches
 
   const sectionRef = useRef(null)
   const perspRef = useRef(null)
@@ -128,7 +128,8 @@ const ProductSec = () => {
             modules={[Autoplay, Pagination]}
             spaceBetween={20}
             slidesPerView={1}
-            loop={true}
+            // Swiper needs more slides than are visible (up to 4) to loop.
+            loop={products.length > 4}
             autoplay={{
               delay: 2000,
               disableOnInteraction: true,
@@ -162,7 +163,7 @@ const ProductSec = () => {
             }}
           >
             {products.map((watch, index) => (
-              <SwiperSlide>
+              <SwiperSlide key={watch.key ?? watch.id}>
 
                 <Link href={getProductHref(watch)} className='cards-link'>
                   {/* <div className="pro-card">

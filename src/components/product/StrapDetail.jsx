@@ -1,7 +1,6 @@
 'use client'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { STRAP_DESCRIPTION, STRAP_SPECS } from '@/data/catalog'
 import AddToCartButton from './AddToCartButton'
 import ProductPrice, { getPriceLabel } from './ProductPrice'
 import ProductSpecs from './ProductSpecs'
@@ -10,8 +9,10 @@ import './product-detail.css'
 import './strap-detail.css'
 
 // Strap layout: banner, details (photo, price, description, specs, Add to Cart)
-// and related straps. Straps share one confirmed description and spec list.
-export default function StrapDetail({ product }) {
+// and related straps. Description and specs are the strap's own (from the admin).
+export default function StrapDetail({ product, related }) {
+  const description = product.longDescription || product.shortDescription
+  const specs = product.specs
   return (
     <div className="strap-page">
       <Header />
@@ -24,10 +25,11 @@ export default function StrapDetail({ product }) {
               <div className="strap-hero-text">
                 <p className="strap-eyebrow">Valour Straps · {product.ref}</p>
                 <h1 id="strap-title" className="strap-hero-title">{product.name}</h1>
-                <p className="strap-hero-sub">Hybrid Sailcloth / FKM Rubber Strap</p>
+                {product.subtitle && <p className="strap-hero-sub">{product.subtitle}</p>}
               </div>
               <div className="strap-hero-image">
-                <img src={product.image} alt={product.name} />
+                {/* Strap hero image (admin: Strap Hero → Hero image), else the main image. */}
+                <img src={product.heroImage ?? product.image} alt={product.name} />
               </div>
             </div>
           </div>
@@ -39,7 +41,8 @@ export default function StrapDetail({ product }) {
             <div className="row gy-5 gx-lg-5 align-items-start">
               <div className="col-12 col-lg-6">
                 <div className={`strap-gallery ${product.color}`}>
-                  <img src={product.image} alt={`${product.name}, front view`} />
+                  {/* Strap details image (admin: Strap Details → Detail image), else the main image. */}
+                  <img src={product.detailImage ?? product.image} alt={`${product.name}, front view`} />
                 </div>
               </div>
 
@@ -49,10 +52,10 @@ export default function StrapDetail({ product }) {
                   <h2 id="strap-details-name" className="strap-name">{product.name}</h2>
                   <ProductPrice product={product} className="strap-price" />
                   <span className="strap-divider" aria-hidden="true" />
-                  <p className="strap-description">{STRAP_DESCRIPTION}</p>
-                  <ProductSpecs specs={STRAP_SPECS} title="Strap Specifications" />
+                  {description && <p className="strap-description">{description}</p>}
+                  <ProductSpecs specs={specs} title="Strap Specifications" />
                   <AddToCartButton product={product} className="theme-btn strap-add-btn">
-                    Add to Cart · {getPriceLabel(product)}
+                    {product.available === false ? 'Out of stock' : <>Add to Cart · {getPriceLabel(product)}</>}
                   </AddToCartButton>
                 </div>
               </div>
@@ -62,6 +65,7 @@ export default function StrapDetail({ product }) {
 
         <RelatedProducts
           product={product}
+          related={related}
           title="Related Straps"
           subtitle="Discover more straps designed to complement your Valour timepiece."
         />

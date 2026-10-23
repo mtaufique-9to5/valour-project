@@ -1,6 +1,5 @@
 'use client'
 import Link from 'next/link'
-import { getRelatedProducts } from '@/data/catalog'
 import { getProductHref } from '@/app/features/product/productUrl'
 import AddToCartButton from './AddToCartButton'
 import ProductPrice from './ProductPrice'
@@ -27,9 +26,10 @@ const RelatedCard = ({ product }) => {
   )
 }
 
-// The next `count` products of the same type, in catalog order.
-export default function RelatedProducts({ product, title, subtitle, count = 4 }) {
-  const related = getRelatedProducts(product, count)
+// `related`: the next products of the same type, worked out on the server
+// (published database products and the static catalog).
+export default function RelatedProducts({ product, related: all = [], title, subtitle, count = 4 }) {
+  const related = all.slice(0, count)
   if (!related.length) return null
   const titleId = `pd-related-${product.key.replace(':', '-')}`
   return (

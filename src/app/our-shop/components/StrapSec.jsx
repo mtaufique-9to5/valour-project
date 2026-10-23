@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 
-const StrapSec = () => {
+const StrapSec = ({ product }) => {
   const imgRef = useRef(null)
   const imgRef2 = useRef(null)
   const sectionRef = useRef(null);
@@ -148,21 +148,32 @@ const StrapSec = () => {
         </span>
       </span>
     ));
+  // "About Strap" section (admin: Product page → About Strap). Empty parts are not rendered.
+  const strap = product?.pdp?.strap ?? {}
+  const left = product?.sectionImages?.strapLeft
+  const right = product?.sectionImages?.strapRight
+
   return (
     <section className='strap-sec straps' ref={sectionRef}>
       <div className="container">
+        {strap.heading && (
         <h2 className="sm-title" data-reveal>
-          {splitWords("About Strap")}
+          {splitWords(strap.heading)}
         </h2>
+        )}
+        {strap.text && (
         <p className="desc"
           ref={(el) => {
             if (el) paragraphRefs.current[0] = el;
           }}
-        >Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. uis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui</p>
+        >{strap.text}</p>
+        )}
+        {(left || right) && (
         <div className="strap-box">
-          <img src="/images/strap-left.png" className='strap-left' alt="" ref={imgRef} />
-          <img src="/images/strap-right.png" className='strap-right' alt="" ref={imgRef2} />
+          {left && <img src={left} className='strap-left' alt="" ref={imgRef} />}
+          {right && <img src={right} className='strap-right' alt="" ref={imgRef2} />}
         </div>
+        )}
       </div>
 
     </section>

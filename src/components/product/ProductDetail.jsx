@@ -10,7 +10,7 @@ const LAYOUTS = {
   strap: StrapDetail,
 }
 
-export default function ProductDetail({ product }) {
+export default function ProductDetail({ product, related }) {
   const Layout = product ? LAYOUTS[product.type] : undefined
-  return Layout ? <Layout product={product} /> : null
+  return Layout ? <Layout product={product} related={related} /> : null
 }

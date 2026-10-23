@@ -53,6 +53,7 @@ export default function PremiumParallax({product}) {
         <main className="luxury-main">
             <section className="luxury-section">
 
+                {product.sectionImages?.parallax1 && (
                 <div className="luxury-image-wrap">
                     <Image
                         ref={el => {
@@ -61,13 +62,14 @@ export default function PremiumParallax({product}) {
                             }
                         }}
                         className="luxury-image"
-                        src={product.secbgImage}
-                        alt="Nova Red Lume"
+                        src={product.sectionImages.parallax1}
+                        alt={product.name}
                         width={1743}
                         height={866}
                     />
                 </div>
-                <ParraInner1 product={product} />
+                )}
+                <ParraInner1 product={product} section="parallax1" />
             </section>
         </main>
     )

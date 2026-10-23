@@ -3,7 +3,10 @@
 import { useEffect, useRef } from "react";
 
 
-export default function RM7501Hero({ product }) {
+// Text of a parallax section: `section` is "parallax1" or "parallax2" (admin:
+// Product page → Parallax 1 / Parallax 2). An empty heading or paragraph is not rendered.
+export default function RM7501Hero({ product, section = "parallax1" }) {
+  const content = product?.pdp?.[section] ?? {}
   const sectionRef = useRef(null);
   const paragraphRefs = useRef([]);
 
@@ -80,16 +83,20 @@ export default function RM7501Hero({ product }) {
           {/* Text column */}
           <div className="col-12 col-md-7 col-lg-6 order-2 order-md-1">
             <div className="rm-hero__text">
+              {content.heading && (
               <h2 className="big-title" data-reveal>
-                {splitWords(`${product?.secTitle}`)}
+                {splitWords(content.heading)}
               </h2>
+              )}
+              {content.text && (
               <p className="desc"
                 ref={(el) => {
                   if (el) paragraphRefs.current[0] = el;
                 }}
               >
-                Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco
+                {content.text}
               </p>
+              )}
             </div>
           </div>
 

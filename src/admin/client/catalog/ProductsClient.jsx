@@ -9,6 +9,8 @@ import useToasts from '@/admin/hooks/useToasts'
 import { getProductHref } from '@/app/features/product/productUrl'
 import { buildProductsSearch, errorOf } from './format'
 
+// Wait for a pause in typing before re-querying the server.
+const SEARCH_DEBOUNCE_MS = 300
 
 /**
  * Server-driven product list. The page reads searchParams (q, type, status,

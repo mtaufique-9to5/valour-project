@@ -441,7 +441,8 @@ const BlogDetails = () => {
               modules={[Autoplay, Pagination]}
               spaceBetween={20}
               slidesPerView={1}
-              loop={true}
+              // Swiper needs more slides than are visible (up to 4) to loop.
+              loop={latestArticles.length > 4}
               autoplay={{
                 delay: 2000,
                 disableOnInteraction: true,
@@ -475,7 +476,7 @@ const BlogDetails = () => {
             }}
             >
               {latestArticles.map((post, idx) => (
-                <SwiperSlide>
+                <SwiperSlide key={post.id}>
                   <article className={`blog-card ${idx === 0 ? "featured" : ""}`}>
                     <div className="card-img-wrap">
                       <img src={post.image} alt={post.title} />

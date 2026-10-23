@@ -9,7 +9,7 @@ import StorefrontChrome from './StorefrontChrome'
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth">
       <head>
         {/* Poppins for every page, loaded once here (not via a CSS @import,
             which only applied when its stylesheet happened to come first).

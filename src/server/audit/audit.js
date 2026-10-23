@@ -50,6 +50,8 @@ export const ACTION_ALLOWLIST = Object.freeze({
   'product.image.upload': ['imageId', 'role', 'mime', 'bytes', 'width', 'height', 'path'],
   'product.image.delete': ['imageId', 'role', 'source', 'storageKey', 'url', 'position', 'path'],
   'product.image.primary': ['imageId', 'path'],
+  'product.image.section': ['role', 'path'],
+  'product.image.section.remove': ['role', 'path'],
   'product.image.reorder': ['order'],
   'inventory.tracking.update': ['trackingMode', 'quantityOnHand', 'delta', 'reason'],
   'product.price.update': ['price', 'amountMinor', 'confirmed', 'currency', 'reason', 'basePrice', 'salePrice'],

@@ -21,7 +21,7 @@ import {
   straps,
   watches,
 } from '../src/data/catalog.js'
-import reducer, { addItem, hydrateCart, makeLineId, selectCartLines } from '../src/app/features/cart/cartSlice.js'
+import reducer, { addItem, hydrateCart, makeLineId, selectCartLines, setProductSummaries } from '../src/app/features/cart/cartSlice.js'
 import { CART_STORAGE_KEY, loadCart, saveCart } from '../src/app/features/cart/cartStorage.js'
 import { getProductHref } from '../src/app/features/product/productUrl.js'
 
@@ -185,25 +185,24 @@ describe('saved-cart compatibility', () => {
   })
   afterEach(() => { delete globalThis.localStorage })
 
-  test('a cart saved before the unified catalog loads unchanged, with watch:1 and strap:1 kept apart', () => {
+  test('an old saved cart: retired static watch/strap lines are dropped; the customizer line and format are kept', () => {
+    const custom = { kind: 'custom', productId: 'custom-watch', options: { caseId: 'gold', dialId: 'mint', strapId: 'grey-teal' }, quantity: 1 }
     const saved = { version: 1, lines: [
       { kind: 'watch', productId: 1, options: {}, quantity: 2 },
       { kind: 'strap', productId: 1, options: {}, quantity: 3 },
-      { kind: 'custom', productId: 'custom-watch', options: { caseId: 'gold', dialId: 'mint', strapId: 'grey-teal' }, quantity: 1 },
+      custom,
     ] }
     store.set(CART_STORAGE_KEY, JSON.stringify(saved))
     const state = run(hydrateCart(loadCart()))
-    assert.deepEqual(state.lines.map((l) => [l.lineId, l.quantity]), [['watch:1', 2], ['strap:1', 3], ['custom:custom-watch|caseId=gold,dialId=mint,strapId=grey-teal', 1]])
-    const lines = selectCartLines({ cart: state })
-    assert.deepEqual(lines.map((l) => [l.name, l.unitPrice]), [['Sunseeker Yellow', 525], ['Black Strap', 45], ['Custom Watch', null]])
-    // Saving writes back exactly the same format.
+    assert.deepEqual(state.lines.map((l) => [l.lineId, l.quantity]), [['custom:custom-watch|caseId=gold,dialId=mint,strapId=grey-teal', 1]])
+    assert.deepEqual(selectCartLines({ cart: state }).map((l) => [l.name, l.unitPrice]), [['Custom Watch', null]])
     saveCart(state.lines)
-    assert.deepEqual(JSON.parse(store.get(CART_STORAGE_KEY)), saved)
+    assert.deepEqual(JSON.parse(store.get(CART_STORAGE_KEY)), { version: 1, lines: [custom] })
   })
 
-  test('adding a strap never merges into the watch with the same numeric id', () => {
-    const state = run(addItem({ kind: 'watch', productId: 2 }), addItem({ kind: 'strap', productId: 2 }), addItem({ kind: 'strap', productId: 2 }))
-    assert.deepEqual(state.lines.map((l) => [l.lineId, l.quantity]), [['watch:2', 1], ['strap:2', 2]])
+  test('database product 2 never merges with the retired static watch 2 or strap 2', () => {
+    const state = run(addItem({ kind: 'watch', productId: 2 }), addItem({ kind: 'strap', productId: 2 }), addItem({ kind: 'product', productId: '2' }))
+    assert.deepEqual(state.lines.map((l) => [l.lineId, l.quantity]), [['product:2', 1]])
   })
 })
 
@@ -226,7 +225,11 @@ describe('product URLs (one route for every product)', () => {
   })
 
   test('cart lines link to the canonical URL; the custom watch still links to the Customizer', () => {
-    const state = run(addItem({ kind: 'watch', productId: 3 }), addItem({ kind: 'strap', productId: 3 }), addItem({ kind: 'custom', productId: 'custom-watch', options: { caseId: 'gold', dialId: 'mint', strapId: 'grey-teal' } }))
-    assert.deepEqual(selectCartLines({ cart: state }).map((l) => l.href), ['/our-shop/aurora-mint/', '/our-shop/yellow/', '/customizer'])
+    const state = run(
+      setProductSummaries({ ids: ['2'], found: { 2: { name: 'Frost Silver', slug: 'frost-silver', image: '/x.png', type: 'watch', price: 525 } } }),
+      addItem({ kind: 'product', productId: '2' }),
+      addItem({ kind: 'custom', productId: 'custom-watch', options: { caseId: 'gold', dialId: 'mint', strapId: 'grey-teal' } }),
+    )
+    assert.deepEqual(selectCartLines({ cart: state }).map((l) => l.href), ['/our-shop/frost-silver/', '/customizer'])
   })
 })

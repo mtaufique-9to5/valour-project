@@ -108,7 +108,7 @@ export const useAddToCart = () => {
       notify(dispatch, store, 'error', `Maximum ${MAX_LINE_QUANTITY} per item.`, 'cart-max-quantity')
     } else {
       dispatch(addItem(payload))
-      const { name } = getCatalogItem(payload.kind, payload.productId)
+      const name = payload.kind === 'product' ? payload.summary?.name ?? 'Item' : getCatalogItem(payload.kind, payload.productId).name
       notify(
         dispatch,
         store,

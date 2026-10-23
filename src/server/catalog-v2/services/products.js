@@ -1,7 +1,7 @@
 // Product writes on the approved `products` table. Each function takes the
 // transaction `tx` (callers check permissions and open the transaction) and
-// records an audit entry in that same transaction.
-// TARGET SCHEMA ONLY: not imported by any route until the replacement migration.
+// records an audit entry in that same transaction. Used by the admin product
+// actions (src/app/admin/(panel)/products/actions.js).
 import 'server-only'
 import { recordAudit } from '../../audit/audit.js'
 import { CommerceError } from '../../commerce/errors.js'
@@ -63,6 +63,7 @@ export async function createProduct(tx, input, actor) {
     metaTitle: input.metaTitle,
     metaDescription: input.metaDescription,
     isFeatured: input.isFeatured,
+    additionalInfo: input.additionalInfo ?? undefined,
     status: 'draft',
   }
   let created

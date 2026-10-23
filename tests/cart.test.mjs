@@ -18,6 +18,7 @@ import reducer, {
   selectHasPricedItems,
   selectHasUnpricedItems,
   selectSubtotal,
+  setProductSummaries,
   setQuantity,
 } from '../src/app/features/cart/cartSlice.js'
 import { CART_STORAGE_KEY, loadCart, saveCart } from '../src/app/features/cart/cartStorage.js'
@@ -38,7 +39,17 @@ import {
 } from '../src/data/catalog.js'
 import { PRICE_ON_REQUEST, formatBadgeCount, formatPrice, getTotalLabels } from '../src/app/features/cart/cartFormat.js'
 
-const [W1, W2] = watches.map((w) => w.id)
+const [W1] = watches.map((w) => w.id)
+// The storefront is database-only: cart lines are database products ('product',
+// id as string). Their display data and prices come from server summaries,
+// preloaded here as the CartHydrator would load them.
+const [P1, P2, P3, P4] = ['1', '2', '3', '4']
+const SUMMARIES = {
+  1: { name: 'Sunseeker Yellow', slug: 'sunseeker-yellow', image: '/images/watch-1.png', type: 'watch', price: 525, compareAtPrice: null, available: true },
+  2: { name: 'Astral Blue', slug: 'astral-blue', image: '/images/watch-2.png', type: 'watch', price: 525, compareAtPrice: null, available: true },
+  3: { name: 'Black Strap', slug: 'black', image: '/images/strap-1.png', type: 'strap', price: 45, compareAtPrice: null, available: true },
+  4: { name: 'Blue Strap', slug: 'blue', image: '/images/strap-2.png', type: 'strap', price: 45, compareAtPrice: null, available: true },
+}
 // Tests that try other prices restore the real (confirmed) ones afterwards.
 const CONFIRMED_WATCH_PRICES = { ...CONFIRMED_PRICES.watch }
 const restoreWatchPrices = () => { CONFIRMED_PRICES.watch = { ...CONFIRMED_WATCH_PRICES } }
@@ -46,7 +57,8 @@ const CUSTOM = 'custom-watch'
 const CONFIG_A = { caseId: 'black', dialId: 'mint', strapId: 'grey-grey' }
 const CONFIG_B = { caseId: 'gold', dialId: 'light-blue', strapId: 'grey-teal' }
 
-const run = (...actions) => actions.reduce((state, action) => reducer(state, action), reducer(undefined, { type: '@@init' }))
+const withSummaries = () => reducer(reducer(undefined, { type: '@@init' }), setProductSummaries({ ids: [P1, P2, P3, P4], found: SUMMARIES }))
+const run = (...actions) => actions.reduce((state, action) => reducer(state, action), withSummaries())
 const root = (cart) => ({ cart })
 
 describe('cart identity and quantities', () => {
@@ -57,13 +69,13 @@ describe('cart identity and quantities', () => {
   })
 
   test('adding the same product again merges into one line', () => {
-    const state = run(addItem({ kind: 'watch', productId: W1 }), addItem({ kind: 'watch', productId: W1 }))
+    const state = run(addItem({ kind: 'product', productId: P1 }), addItem({ kind: 'product', productId: P1 }))
     assert.equal(state.lines.length, 1)
     assert.equal(state.lines[0].quantity, 2)
   })
 
   test('different products stay separate', () => {
-    const state = run(addItem({ kind: 'watch', productId: W1 }), addItem({ kind: 'watch', productId: W2 }))
+    const state = run(addItem({ kind: 'product', productId: P1 }), addItem({ kind: 'product', productId: P2 }))
     assert.equal(state.lines.length, 2)
   })
 
@@ -72,7 +84,7 @@ describe('cart identity and quantities', () => {
       addItem({ kind: 'custom', productId: CUSTOM, options: { caseId: 'black', dialId: 'mint', strapId: 'grey-grey' } }),
       addItem({ kind: 'custom', productId: CUSTOM, options: { caseId: 'silver', dialId: 'mint', strapId: 'grey-grey' } }),
       addItem({ kind: 'custom', productId: CUSTOM, options: { strapId: 'grey-grey', dialId: 'mint', caseId: 'black' } }),
-      addItem({ kind: 'watch', productId: W1 }),
+      addItem({ kind: 'product', productId: P1 }),
     )
     assert.equal(state.lines.length, 3)
     const black = state.lines.find((l) => l.lineId === makeLineId('custom', CUSTOM, { caseId: 'black', dialId: 'mint', strapId: 'grey-grey' }))
@@ -80,8 +92,8 @@ describe('cart identity and quantities', () => {
   })
 
   test(`quantities are capped at ${MAX_LINE_QUANTITY}`, () => {
-    const id = makeLineId('watch', W1)
-    let state = run(addItem({ kind: 'watch', productId: W1, quantity: 8 }), addItem({ kind: 'watch', productId: W1, quantity: 5 }))
+    const id = makeLineId('product', P1)
+    let state = run(addItem({ kind: 'product', productId: P1, quantity: 8 }), addItem({ kind: 'product', productId: P1, quantity: 5 }))
     assert.equal(state.lines[0].quantity, MAX_LINE_QUANTITY)
     state = reducer(state, incrementQuantity(id))
     assert.equal(state.lines[0].quantity, MAX_LINE_QUANTITY)
@@ -90,33 +102,37 @@ describe('cart identity and quantities', () => {
   })
 
   test('invalid quantities are ignored and decrement stops at 1', () => {
-    const id = makeLineId('watch', W1)
-    let state = run(addItem({ kind: 'watch', productId: W1, quantity: 3 }))
+    const id = makeLineId('product', P1)
+    let state = run(addItem({ kind: 'product', productId: P1, quantity: 3 }))
     for (const quantity of [0, -2, 2.5, '4', null]) {
       state = reducer(state, setQuantity({ lineId: id, quantity }))
     }
     assert.equal(state.lines[0].quantity, 3)
-    state = run(addItem({ kind: 'watch', productId: W1 }), decrementQuantity(id))
+    state = run(addItem({ kind: 'product', productId: P1 }), decrementQuantity(id))
     assert.equal(state.lines[0].quantity, 1)
-    assert.equal(run(addItem({ kind: 'watch', productId: W1, quantity: 0 })).lines.length, 0)
+    assert.equal(run(addItem({ kind: 'product', productId: P1, quantity: 0 })).lines.length, 0)
   })
 
   test('remove affects only the target line; clear empties the cart', () => {
-    let state = run(addItem({ kind: 'watch', productId: W1 }), addItem({ kind: 'watch', productId: W2, quantity: 3 }))
-    state = reducer(state, removeItem(makeLineId('watch', W1)))
-    assert.deepEqual(state.lines.map((l) => [l.productId, l.quantity]), [[W2, 3]])
+    let state = run(addItem({ kind: 'product', productId: P1 }), addItem({ kind: 'product', productId: P2, quantity: 3 }))
+    state = reducer(state, removeItem(makeLineId('product', P1)))
+    assert.deepEqual(state.lines.map((l) => [l.productId, l.quantity]), [[P2, 3]])
     state = reducer(state, clearCart())
     assert.deepEqual(state.lines, [])
   })
 
-  test('unknown products and kinds are rejected', () => {
+  test('malformed products, unknown kinds and retired static kinds are rejected', () => {
     const state = run(
+      addItem({ kind: 'product', productId: '0' }),
+      addItem({ kind: 'product', productId: 1 }),
+      addItem({ kind: 'product', productId: '1x' }),
+      addItem({ kind: 'strap', productId: 1 }),
       addItem({ kind: 'watch', productId: 9999 }),
       addItem({ kind: 'watch', productId: String(W1) }),
       addItem({ kind: 'bracelet', productId: W1 }),
       addItem({ kind: 'constructor', productId: W1 }),
-      addItem({ kind: 'watch', productId: W1, options: ['x'] }),
-      addItem({ kind: 'watch', productId: W1, options: { nested: { a: 1 } } }),
+      addItem({ kind: 'product', productId: P1, options: ['x'] }),
+      addItem({ kind: 'product', productId: P1, options: { nested: { a: 1 } } }),
     )
     assert.deepEqual(state.lines, [])
   })
@@ -125,11 +141,11 @@ describe('cart identity and quantities', () => {
 describe('hydration', () => {
   test('keeps valid lines, drops invalid ones, merges duplicates, clamps, recomputes lineId', () => {
     const state = run(hydrateCart([
-      { kind: 'watch', productId: W1, options: {}, quantity: 2, lineId: 'forged' },
-      { kind: 'watch', productId: W1, quantity: 1 },
-      { kind: 'watch', productId: W2, quantity: 50 },
+      { kind: 'product', productId: P1, options: {}, quantity: 2, lineId: 'forged' },
+      { kind: 'product', productId: P1, quantity: 1 },
+      { kind: 'product', productId: P2, quantity: 50 },
       { kind: 'watch', productId: 9999, quantity: 1 },
-      { kind: 'watch', productId: W2, quantity: 0 },
+      { kind: 'product', productId: P2, quantity: 0 },
       null,
       'junk',
       { id: 1, name: 'Sunseeker Yellow', price: 499, quantity: 1 }, // legacy shape
@@ -137,7 +153,7 @@ describe('hydration', () => {
     assert.equal(state.hydrated, true)
     assert.deepEqual(
       state.lines.map((l) => [l.lineId, l.quantity]),
-      [[makeLineId('watch', W1), 3], [makeLineId('watch', W2), MAX_LINE_QUANTITY]],
+      [[makeLineId('product', P1), 3], [makeLineId('product', P2), MAX_LINE_QUANTITY]],
     )
   })
 
@@ -154,7 +170,7 @@ describe('pricing selectors', () => {
   afterEach(restoreWatchPrices)
 
   test('standard watches use the confirmed $525 (never the old 499 / 3200) and multiply by quantity', () => {
-    const state = root(run(addItem({ kind: 'watch', productId: W1, quantity: 2 })))
+    const state = root(run(addItem({ kind: 'product', productId: P1, quantity: 2 })))
     const [line] = selectCartLines(state)
     assert.equal(line.unitPrice, 525)
     assert.equal(line.lineTotal, 1050)
@@ -165,34 +181,34 @@ describe('pricing selectors', () => {
   })
 
   test('prices stored with a line are ignored (tampering)', () => {
-    const state = root(run(hydrateCart([{ kind: 'watch', productId: W1, quantity: 1, price: 1, unitPrice: 1, lineTotal: 1 }])))
+    const state = root(run(hydrateCart([{ kind: 'product', productId: P1, quantity: 1, price: 1, unitPrice: 1, lineTotal: 1 }])))
     const [line] = selectCartLines(state)
     assert.equal(line.unitPrice, 525)
     assert.equal(selectSubtotal(state), 525)
   })
 
-  test('confirmed prices drive line totals and subtotal; unpriced lines are excluded', () => {
-    CONFIRMED_PRICES.watch = { [W1]: 250 }
-    const state = root(run(
-      addItem({ kind: 'watch', productId: W1, quantity: 3 }),
-      addItem({ kind: 'watch', productId: W2, quantity: 2 }),
-    ))
+  test('server prices drive line totals and subtotal; a price change from the server applies', () => {
+    let cart = run(
+      addItem({ kind: 'product', productId: P1, quantity: 3 }),
+      addItem({ kind: 'product', productId: P2, quantity: 2 }),
+    )
+    cart = reducer(cart, setProductSummaries({ ids: [P1], found: { 1: { ...SUMMARIES[1], price: 250 } } }))
+    const state = root(cart)
     const lines = selectCartLines(state)
     assert.equal(lines[0].unitPrice, 250)
     assert.equal(lines[0].lineTotal, 750)
-    assert.equal(lines[1].lineTotal, null)
-    assert.equal(selectSubtotal(state), 750)
-    assert.equal(selectHasUnpricedItems(state), true)
-    assert.equal(selectHasPricedItems(state), true)
+    assert.equal(lines[1].lineTotal, 1050)
+    assert.equal(selectSubtotal(state), 1800)
+    assert.equal(selectHasUnpricedItems(state), false)
     assert.equal(selectCartCount(state), 5)
   })
 
-  test('display fields come from the catalog', () => {
-    const state = root(run(addItem({ kind: 'watch', productId: W1 })))
+  test('display fields come from the server summary', () => {
+    const state = root(run(addItem({ kind: 'product', productId: P1 })))
     const [line] = selectCartLines(state)
-    assert.equal(line.name, watches[0].name)
-    assert.equal(line.image, watches[0].image)
-    assert.equal(line.slug, watches[0].slug)
+    assert.equal(line.name, SUMMARIES[1].name)
+    assert.equal(line.image, SUMMARIES[1].image)
+    assert.equal(line.slug, SUMMARIES[1].slug)
   })
 })
 
@@ -218,15 +234,10 @@ describe('display formatting', () => {
       { subtotal: '$1,500.00', total: '$1,500.00 USD', excludesUnpriced: false })
   })
 
-  test('labels match the selectors end to end', () => {
-    CONFIRMED_PRICES.watch = { [W1]: 250 }
-    try {
-      const state = root(run(addItem({ kind: 'watch', productId: W1, quantity: 2 }), addItem({ kind: 'watch', productId: W2 })))
-      const labels = getTotalLabels({ subtotal: selectSubtotal(state), hasPricedItems: selectHasPricedItems(state), hasUnpricedItems: selectHasUnpricedItems(state) })
-      assert.deepEqual(labels, { subtotal: '$500.00', total: PRICE_ON_REQUEST, excludesUnpriced: true })
-    } finally {
-      restoreWatchPrices()
-    }
+  test('labels match the selectors end to end (database products always have a price)', () => {
+    const state = root(run(addItem({ kind: 'product', productId: P1, quantity: 2 }), addItem({ kind: 'product', productId: P2 })))
+    const labels = getTotalLabels({ subtotal: selectSubtotal(state), hasPricedItems: selectHasPricedItems(state), hasUnpricedItems: selectHasUnpricedItems(state) })
+    assert.deepEqual(labels, { subtotal: '$1,575.00', total: '$1,575.00 USD', excludesUnpriced: false })
   })
 
   test('badge count caps at 99+', () => {
@@ -271,7 +282,7 @@ describe('storage', () => {
   })
 
   test('identical saves do not rewrite storage', () => {
-    const lines = run(addItem({ kind: 'watch', productId: W1 })).lines
+    const lines = run(addItem({ kind: 'product', productId: P1 })).lines
     saveCart(lines)
     saveCart(lines)
     assert.equal(globalThis.localStorage.writes, 1)
@@ -339,7 +350,7 @@ describe('Step 3: catalog options and custom watches', () => {
       addItem({ kind: 'custom', productId: CUSTOM, options: { ...CONFIG_A, caseId: 'nope' } }),
       addItem({ kind: 'custom', productId: CUSTOM, options: { ...CONFIG_A, extra: 'x' } }),
       addItem({ kind: 'custom', productId: 'other', options: CONFIG_A }),
-      addItem({ kind: 'watch', productId: W1, options: { caseId: 'black' } }),
+      addItem({ kind: 'product', productId: P1, options: { caseId: 'black' } }),
     )
     assert.deepEqual(state.lines, [])
   })
@@ -355,7 +366,7 @@ describe('Step 3: catalog options and custom watches', () => {
 
   test('selectCartLines exposes name, option labels, layers and href', () => {
     const [watch, custom] = selectCartLines(root(run(
-      addItem({ kind: 'watch', productId: W1 }),
+      addItem({ kind: 'product', productId: P1 }),
       addItem({ kind: 'custom', productId: CUSTOM, options: CONFIG_A }),
     )))
     assert.equal(watch.href, `/our-shop/${watches[0].slug}/`)
@@ -373,30 +384,30 @@ describe('Step 3: catalog options and custom watches', () => {
     const state = run(hydrateCart([
       { kind: 'custom', productId: CUSTOM, options: CONFIG_A, quantity: 2 },
       { kind: 'custom', productId: CUSTOM, options: { caseId: 'black' }, quantity: 1 },
-      { kind: 'watch', productId: W1, options: { caseId: 'black' }, quantity: 1 },
+      { kind: 'product', productId: P1, options: { caseId: 'black' }, quantity: 1 },
     ]))
     assert.deepEqual(state.lines.map((l) => [l.kind, l.quantity]), [['custom', 2]])
   })
 })
 
 describe('Step 3: getAddOutcome', () => {
-  const linesWith = (qty) => run(addItem({ kind: 'watch', productId: W1, quantity: qty })).lines
+  const linesWith = (qty) => run(addItem({ kind: 'product', productId: P1, quantity: qty })).lines
 
   test('added for a new or below-limit line', () => {
-    assert.deepEqual(getAddOutcome([], { kind: 'watch', productId: W1 }), { outcome: 'added', lineId: makeLineId('watch', W1) })
-    assert.equal(getAddOutcome(linesWith(9), { kind: 'watch', productId: W1 }).outcome, 'added')
+    assert.deepEqual(getAddOutcome([], { kind: 'product', productId: P1 }), { outcome: 'added', lineId: makeLineId('product', P1) })
+    assert.equal(getAddOutcome(linesWith(9), { kind: 'product', productId: P1 }).outcome, 'added')
   })
 
   test('max when the line is already at the limit; capped when the add would exceed it', () => {
-    assert.equal(getAddOutcome(linesWith(MAX_LINE_QUANTITY), { kind: 'watch', productId: W1 }).outcome, 'max')
-    assert.equal(getAddOutcome(linesWith(8), { kind: 'watch', productId: W1, quantity: 5 }).outcome, 'capped')
+    assert.equal(getAddOutcome(linesWith(MAX_LINE_QUANTITY), { kind: 'product', productId: P1 }).outcome, 'max')
+    assert.equal(getAddOutcome(linesWith(8), { kind: 'product', productId: P1, quantity: 5 }).outcome, 'capped')
   })
 
   test('invalid for unknown products, bad quantities and unsupported options', () => {
     for (const payload of [
       { kind: 'watch', productId: 999 },
-      { kind: 'watch', productId: W1, quantity: 0 },
-      { kind: 'watch', productId: W1, options: { caseId: 'black' } },
+      { kind: 'product', productId: P1, quantity: 0 },
+      { kind: 'product', productId: P1, options: { caseId: 'black' } },
       { kind: 'custom', productId: CUSTOM, options: { caseId: 'black' } },
       { kind: 'bracelet', productId: 1 },
     ]) {
@@ -465,13 +476,16 @@ describe('F-14: lines from other tabs are never deleted', () => {
     middleware: (getDefault) => getDefault().prepend(createCartPersistence()),
   })
   const savedLines = () => JSON.parse(store.get(CART_STORAGE_KEY)).lines
-  const UNKNOWN = { kind: 'watch', productId: 77, options: {}, quantity: 2 }
+  // A kind this tab does not know (e.g. written by a newer tab).
+  const UNKNOWN = { kind: 'bracelet', productId: 77, options: {}, quantity: 2 }
 
   test('isWellFormedLine / isUnrecognizedLine separate unknown-but-valid from corrupt', () => {
     assert.equal(isWellFormedLine(UNKNOWN), true)
     assert.equal(isUnrecognizedLine(UNKNOWN), true)
-    assert.equal(isUnrecognizedLine({ kind: 'watch', productId: W1, options: {}, quantity: 1 }), false, 'known line')
-    assert.equal(isUnrecognizedLine({ kind: 'strap', productId: 'new-strap', options: { size: 22 }, quantity: 1 }), true, 'unknown kind')
+    assert.equal(isUnrecognizedLine({ kind: 'product', productId: P1, options: {}, quantity: 1 }), false, 'known line')
+    assert.equal(isUnrecognizedLine({ kind: 'bracelet', productId: 'new-item', options: { size: 22 }, quantity: 1 }), true, 'unknown kind')
+    assert.equal(isUnrecognizedLine({ kind: 'watch', productId: 1, options: {}, quantity: 1 }), false, 'retired static watch: dropped, not preserved')
+    assert.equal(isUnrecognizedLine({ kind: 'strap', productId: 1, options: {}, quantity: 1 }), false, 'retired static strap: dropped, not preserved')
     for (const bad of [null, 'x', [], { kind: 'watch', productId: 77, quantity: 0 }, { kind: 'watch', productId: 77, quantity: 11 },
       { kind: 'watch', productId: 1.5, quantity: 1 }, { kind: 3, productId: 77, quantity: 1 }, { kind: 'watch', productId: 77, options: [], quantity: 1 },
       { kind: 'watch', productId: 77, options: { a: { b: 1 } }, quantity: 1 }]) {
@@ -481,34 +495,34 @@ describe('F-14: lines from other tabs are never deleted', () => {
 
   test('loading the cart never writes to storage', () => {
     const s = makeStore()
-    s.dispatch(hydrateCart([{ kind: 'watch', productId: W1, options: {}, quantity: 1 }, UNKNOWN]))
+    s.dispatch(hydrateCart([{ kind: 'product', productId: P1, options: {}, quantity: 1 }, UNKNOWN]))
     assert.equal(globalThis.localStorage.writes, 0)
   })
 
   test('user actions save; nothing saves before the cart has loaded', () => {
     const s = makeStore()
-    s.dispatch(addItem({ kind: 'watch', productId: W1 }))
+    s.dispatch(addItem({ kind: 'product', productId: P1 }))
     assert.equal(globalThis.localStorage.writes, 0, 'not hydrated yet')
     s.dispatch(hydrateCart([]))
-    s.dispatch(addItem({ kind: 'watch', productId: W1 }))
-    assert.deepEqual(savedLines(), [{ kind: 'watch', productId: W1, options: {}, quantity: 1 }])
+    s.dispatch(addItem({ kind: 'product', productId: P1 }))
+    assert.deepEqual(savedLines(), [{ kind: 'product', productId: P1, options: {}, quantity: 1 }])
   })
 
   test("a line this tab doesn't recognise survives this tab's own saves", () => {
-    const raw = [{ kind: 'watch', productId: W2, options: {}, quantity: 1 }, UNKNOWN, { kind: 'watch', productId: 'junk', quantity: -1 }]
+    const raw = [{ kind: 'product', productId: P2, options: {}, quantity: 1 }, UNKNOWN, { kind: 'watch', productId: 'junk', quantity: -1 }]
     setPreservedLines(raw.filter(isUnrecognizedLine)) // what CartHydrator does
     const s = makeStore()
     s.dispatch(hydrateCart(raw))
-    s.dispatch(incrementQuantity(makeLineId('watch', W2)))
-    assert.deepEqual(savedLines(), [{ kind: 'watch', productId: W2, options: {}, quantity: 2 }, UNKNOWN], 'corrupt line dropped, unknown kept')
-    s.dispatch(removeItem(makeLineId('watch', W2)))
+    s.dispatch(incrementQuantity(makeLineId('product', P2)))
+    assert.deepEqual(savedLines(), [{ kind: 'product', productId: P2, options: {}, quantity: 2 }, UNKNOWN], 'corrupt line dropped, unknown kept')
+    s.dispatch(removeItem(makeLineId('product', P2)))
     assert.deepEqual(savedLines(), [UNKNOWN])
   })
 
   test('clear cart removes preserved lines too', () => {
     setPreservedLines([UNKNOWN])
     const s = makeStore()
-    s.dispatch(hydrateCart([{ kind: 'watch', productId: W1, options: {}, quantity: 1 }, UNKNOWN]))
+    s.dispatch(hydrateCart([{ kind: 'product', productId: P1, options: {}, quantity: 1 }, UNKNOWN]))
     s.dispatch(clearCart())
     assert.deepEqual(savedLines(), [])
   })
@@ -517,7 +531,7 @@ describe('F-14: lines from other tabs are never deleted', () => {
     setPreservedLines(Array.from({ length: 80 }, (_, i) => ({ ...UNKNOWN, productId: 1000 + i })))
     const s = makeStore()
     s.dispatch(hydrateCart([]))
-    s.dispatch(addItem({ kind: 'watch', productId: W1 }))
+    s.dispatch(addItem({ kind: 'product', productId: P1 }))
     assert.equal(savedLines().length, 51)
   })
 })
@@ -579,15 +593,15 @@ describe('Straps: catalog, $45.00 price and cart behaviour', () => {
   })
 
   test('the same strap merges, different straps stay separate, max 10', () => {
-    let state = run(addItem({ kind: 'strap', productId: S1 }), addItem({ kind: 'strap', productId: S1 }), addItem({ kind: 'strap', productId: S2 }))
-    assert.deepEqual(state.lines.map((l) => [l.lineId, l.quantity]), [['strap:1', 2], ['strap:2', 1]])
-    state = run(addItem({ kind: 'strap', productId: S1, quantity: 9 }), addItem({ kind: 'strap', productId: S1, quantity: 5 }))
+    let state = run(addItem({ kind: 'product', productId: P3 }), addItem({ kind: 'product', productId: P3 }), addItem({ kind: 'product', productId: P4 }))
+    assert.deepEqual(state.lines.map((l) => [l.lineId, l.quantity]), [['product:3', 2], ['product:4', 1]])
+    state = run(addItem({ kind: 'product', productId: P3, quantity: 9 }), addItem({ kind: 'product', productId: P3, quantity: 5 }))
     assert.equal(state.lines[0].quantity, MAX_LINE_QUANTITY)
-    assert.equal(getAddOutcome(state.lines, { kind: 'strap', productId: S1 }).outcome, 'max')
+    assert.equal(getAddOutcome(state.lines, { kind: 'product', productId: P3 }).outcome, 'max')
   })
 
   test('strap lines show name, image, $45 unit price, line total and their strap page', () => {
-    const [line] = selectCartLines(root(run(addItem({ kind: 'strap', productId: S2, quantity: 3 }))))
+    const [line] = selectCartLines(root(run(addItem({ kind: 'product', productId: P4, quantity: 3 }))))
     assert.equal(line.name, 'Blue Strap')
     assert.equal(line.image, '/images/strap-2.png')
     assert.equal(line.href, '/our-shop/blue/')
@@ -598,15 +612,15 @@ describe('Straps: catalog, $45.00 price and cart behaviour', () => {
   })
 
   test('straps only: real subtotal and total', () => {
-    const state = root(run(addItem({ kind: 'strap', productId: S1, quantity: 2 }), addItem({ kind: 'strap', productId: S2 })))
+    const state = root(run(addItem({ kind: 'product', productId: P3, quantity: 2 }), addItem({ kind: 'product', productId: P4 })))
     const labels = getTotalLabels({ subtotal: selectSubtotal(state), hasPricedItems: selectHasPricedItems(state), hasUnpricedItems: selectHasUnpricedItems(state) })
     assert.deepEqual(labels, { subtotal: '$135.00', total: '$135.00 USD', excludesUnpriced: false })
   })
 
   test('mixed with a watch and a custom watch: subtotal is strap + watch, total stays on request', () => {
     const state = root(run(
-      addItem({ kind: 'strap', productId: S1 }),
-      addItem({ kind: 'watch', productId: W1 }),
+      addItem({ kind: 'product', productId: P3 }),
+      addItem({ kind: 'product', productId: P1 }),
       addItem({ kind: 'custom', productId: CUSTOM, options: CONFIG_A }),
     ))
     assert.equal(selectCartCount(state), 3)
@@ -616,9 +630,9 @@ describe('Straps: catalog, $45.00 price and cart behaviour', () => {
 
   test('watches and straps only: real subtotal and total, quantities multiplied', () => {
     const state = root(run(
-      addItem({ kind: 'watch', productId: W1, quantity: 2 }),
-      addItem({ kind: 'watch', productId: W2 }),
-      addItem({ kind: 'strap', productId: S1, quantity: 3 }),
+      addItem({ kind: 'product', productId: P1, quantity: 2 }),
+      addItem({ kind: 'product', productId: P2 }),
+      addItem({ kind: 'product', productId: P3, quantity: 3 }),
     ))
     assert.equal(selectSubtotal(state), 2 * 525 + 525 + 3 * 45)
     const labels = getTotalLabels({ subtotal: selectSubtotal(state), hasPricedItems: selectHasPricedItems(state), hasUnpricedItems: selectHasUnpricedItems(state) })
@@ -627,7 +641,7 @@ describe('Straps: catalog, $45.00 price and cart behaviour', () => {
   })
 
   test('a price stored with a strap line is ignored', () => {
-    const [line] = selectCartLines(root(run(hydrateCart([{ kind: 'strap', productId: S1, quantity: 1, price: 1, unitPrice: 1 }]))))
+    const [line] = selectCartLines(root(run(hydrateCart([{ kind: 'product', productId: P3, quantity: 1, price: 1, unitPrice: 1 }]))))
     assert.equal(line.unitPrice, 45)
   })
 
@@ -646,15 +660,15 @@ describe('Straps: catalog, $45.00 price and cart behaviour', () => {
     test('strap lines save as references and survive a reload next to existing watch/custom lines', () => {
       // A cart saved before straps existed still loads unchanged.
       store.set(CART_STORAGE_KEY, JSON.stringify({ version: 1, lines: [
-        { kind: 'watch', productId: W1, options: {}, quantity: 1 },
+        { kind: 'product', productId: P1, options: {}, quantity: 1 },
         { kind: 'custom', productId: CUSTOM, options: CONFIG_A, quantity: 1 },
       ] }))
       let state = run(hydrateCart(loadCart()))
       assert.equal(state.lines.length, 2)
-      state = reducer(state, addItem({ kind: 'strap', productId: S1, quantity: 2 }))
+      state = reducer(state, addItem({ kind: 'product', productId: P3, quantity: 2 }))
       saveCart(state.lines)
       const saved = JSON.parse(store.get(CART_STORAGE_KEY))
-      assert.deepEqual(saved.lines[2], { kind: 'strap', productId: S1, options: {}, quantity: 2 })
+      assert.deepEqual(saved.lines[2], { kind: 'product', productId: P3, options: {}, quantity: 2 })
       assert.deepEqual(run(hydrateCart(loadCart())).lines, state.lines)
     })
   })

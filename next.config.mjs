@@ -1,6 +1,4 @@
-import { straps } from './src/data/catalog.js';
-
-/** @type {import('next).NextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   // Runs as a Node server (`next start`); static export (`output: 'export'`) removed.
   basePath: process.env.BASE_PATH || '',
@@ -16,16 +14,12 @@ const nextConfig = {
 
   transpilePackages: ['gsap'],
 
-  // Permanent (308) redirects for old addresses. Built from the catalog so only
-  // the six real straps redirect; unknown /straps/ paths stay 404.
+  // Permanent (308) redirect for the old single product page. Products are
+  // database-driven: old /straps/{slug}/ addresses are forwarded by
+  // src/app/straps/[slug]/page.jsx for published database straps.
   async redirects() {
     return [
-      ...straps.map((strap) => ({
-        source: `/straps/${strap.slug}/`,
-        destination: `/our-shop/${strap.slug}/`,
-        permanent: true,
-      })),
-      { source: '/product-details/', destination: '/our-shop/sunseeker-yellow/', permanent: true },
+      { source: '/product-details/', destination: '/our-shop/', permanent: true },
     ];
   },
 };

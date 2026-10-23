@@ -5,52 +5,45 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import SplitType from "split-type";
-import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
-import { getProductsByType } from "@/data/catalog";
 import { getProductHref } from "@/app/features/product/productUrl";
-import { getPriceLabel } from "@/components/product/ProductPrice";
+import { PriceLabel } from "@/components/product/ProductPrice";
 
-// Strap cards are built from the catalog. Cards show the short colour name
-// ("Black Strap" -> "Black"); price and link come from the shared helpers.
-const strapProducts = getProductsByType("strap");
+// Watches and straps come from the page (published database products). Strap
+// cards show the short colour name ("Black Strap" -> "Black").
 const strapCardName = (product) => product.name.replace(/\s+Strap$/, "");
 
 
 
 // ─── Filter Options ─────────────────────────────────────────────────────────
+// Only the "All" entries are fixed; the other options come from the products on
+// the page (see withProductValues), so every filter value matches a real product.
 const filterOptions = {
-  collection: [
-    { value: "all", label: "All Collections" },
-    { value: "lucent", label: "Lucent Collection" },
-  ],
-
-  type: [
-    { value: "all", label: "All Types" },
-    { value: "automatic", label: "Automatic" },
-  ],
-
-  material: [
-    { value: "all", label: "All Materials" },
-    { value: "titanium", label: "Grade 5 Titanium" },
-  ],
-
-  color: [
-    { value: "all", label: "All Colors" },
-    { value: "yellow", label: "Sunseeker Yellow" },
-    { value: "red", label: "Nova Red" },
-    { value: "silver", label: "Frost Silver" },
-    { value: "black", label: "Eclipse Black" },
-    { value: "mint", label: "Aurora Mint" },
-    { value: "blue", label: "Astral Blue" },
-  ],
+  collection: [{ value: "all", label: "All Collections" }],
+  type: [{ value: "all", label: "All Types" }],
+  material: [{ value: "all", label: "All Materials" }],
+  color: [{ value: "all", label: "All Colors" }],
 };
 
+// Filter field per dropdown; each distinct value found on the products becomes an option.
+const FILTER_FIELDS = { collection: "collection", type: "movement", material: "material", color: "color" };
+const titleCase = (v) => String(v).replace(/[-_]+/g, " ").replace(/w/g, (c) => c.toUpperCase());
+function withProductValues(products) {
+  const out = {};
+  for (const [key, opts] of Object.entries(filterOptions)) {
+    const known = new Set(opts.map((o) => o.value));
+    const extra = [...new Set(products.map((p) => p[FILTER_FIELDS[key]]).filter((v) => typeof v === "string" && v && !known.has(v)))];
+    out[key] = [...opts, ...extra.map((value) => ({ value, label: titleCase(value) }))];
+  }
+  return out;
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
-export default function HorizonTimepieces() {
+export default function HorizonTimepieces({ watches = [], straps = [] }) {
   const router = useRouter();
   const sectionRef = useRef(null)
-  const products = useSelector((state) => state.product.value)
+  const products = watches
+  const options = withProductValues(watches)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -190,7 +183,7 @@ export default function HorizonTimepieces() {
   );
 
   const getFilterLabel = (type, value) => {
-    const option = filterOptions[type]?.find((o) => o.value === value);
+    const option = options[type]?.find((o) => o.value === value);
     return option ? option.label : value;
   };
 
@@ -248,7 +241,7 @@ export default function HorizonTimepieces() {
                     </div>
                     {
 
-                      Object.entries(filterOptions).map(([filterType, options]) => (
+                      Object.entries(options).map(([filterType, options]) => (
                         <div key={filterType} style={{ position: "relative" }}>
                           <button
                             className={`ht-filter-btn ${activeFilters[filterType] !== "all" ? "active" : ""} ${openDropdown === filterType ? "open" : ""
@@ -418,7 +411,7 @@ export default function HorizonTimepieces() {
         <section className="strap-sec">
           <h4>Straps</h4>
           <div className={`ht-grid`}>
-            {strapProducts.map((product) => (
+            {straps.map((product) => (
               <div
                 key={product.key}
                 className={`ht-card ${product.color}`}
@@ -463,10 +456,9 @@ export default function HorizonTimepieces() {
                       </div>
                     </div>
                     <div className="ht-card-specs">
-                      {/* Backed by STRAP_SPECS (Lug Attachment: Quick-release Springbars). */}
-                      <span>Quick Release</span>
-                      <div className="dot" />
-                      <span>{getPriceLabel(product)}</span>
+                      {/* The strap's own material or subtitle, when set in the admin. */}
+                      {(product.material || product.subtitle) && <><span>{product.material || product.subtitle}</span><div className="dot" /></>}
+                      <PriceLabel product={product} />
                     </div>
                   </div>
                 </div>

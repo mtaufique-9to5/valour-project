@@ -1,9 +1,9 @@
+import { redirect } from 'next/navigation'
 import { requirePagePermission } from '@/server/admin/context'
 import { PERMISSIONS } from '@/server/rbac/permissions'
-import { catalogWatches } from '@/server/admin/catalog-source'
-import CatalogListClient from '@/admin/client/CatalogListClient'
 
+// Kept URL: Watches are products of type watch, managed in the product list.
 export default async function AdminWatchesPage() {
   await requirePagePermission(PERMISSIONS.PRODUCT_VIEW)
-  return <CatalogListClient kind="watch" products={catalogWatches()} />
+  redirect('/admin/products?type=WATCH')
 }

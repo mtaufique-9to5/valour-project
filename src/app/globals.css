@@ -4363,3 +4363,5 @@ body {
     font-size: 22px;
   }
 }
+/* Original price shown struck through before a sale price (database products). */
+.price-was { opacity: 0.55; font-size: 0.85em; margin-right: 0.35em; text-decoration: line-through; }

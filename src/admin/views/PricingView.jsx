@@ -19,12 +19,12 @@ export default function PricingView({ products = [], loading = false, canEdit = 
       <PageHeader
         eyebrow="Catalog"
         title="Pricing"
-        description="Every product needs a price above zero before it can be published. Changes are audit-logged."
+        description="Every product has a base price above zero; an optional sale price (not higher than the base price) is what customers pay. Any administrator can change prices; each change is recorded in the server log."
         badge={badge}
       />
       {!canEdit && (
         <Alert tone="info" title="Read-only">
-          Changing prices requires the <code>product.price.update</code> permission. Every change is audit-logged.
+          Prices can be viewed here but not changed.
         </Alert>
       )}
       <Card flush title="Unit prices" subtitle={`${confirmed} of ${products.length} products have a price`}>
@@ -47,7 +47,7 @@ export default function PricingView({ products = [], loading = false, canEdit = 
             canEdit && onEditPrice ? (
               <Button variant="ghost" size="sm" iconOnly icon={Pencil} aria-label={`Change price of ${r.name}`} onClick={() => onEditPrice(r)} />
             ) : (
-              <span className="va-muted" title="Requires product.price.update"><Lock size={14} aria-label="Locked" /></span>
+              <span className="va-muted" title="Prices cannot be changed here"><Lock size={14} aria-label="Locked" /></span>
             )
           }
         />

@@ -49,7 +49,6 @@ export default function PremiumParallax({ product }) {
         return () => document.getElementById('main-scroller')?.removeEventListener('scroll', handleScroll)
     }, [])
 
-    console.log(product);
 
     return (
         <main className="luxury-main">
@@ -63,7 +62,7 @@ export default function PremiumParallax({ product }) {
                             }
                         }}
                         className="luxury-image"
-                        src={product?.mainImage}
+                        src={product?.heroImage}
                         alt={product?.name}
                         width={1877}
                         height={866}

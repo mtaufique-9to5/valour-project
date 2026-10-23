@@ -1,9 +1,22 @@
 import { formatPrice } from '@/app/features/cart/cartFormat'
-import { getProductPrice } from '@/data/catalog'
 
-// "$45.00" or "Price on request" — always from CONFIRMED_PRICES via the catalog.
-export const getPriceLabel = (product) => formatPrice(getProductPrice(product))
+// The price the server read from `products` for this page load (sale price when
+// set). The cart and checkout re-read prices themselves.
+export const unitPriceOf = (product) => product?.price ?? null
+
+export const getPriceLabel = (product) => formatPrice(unitPriceOf(product))
+
+// "$1,099.00" with the base price struck through before it when on sale.
+export function PriceLabel({ product }) {
+  const was = product?.compareAtPrice
+  return (
+    <span>
+      {was != null && <><s className="price-was">{formatPrice(was)}</s>{' '}</>}
+      {getPriceLabel(product)}
+    </span>
+  )
+}
 
 export default function ProductPrice({ product, className }) {
-  return <p className={className}>{getPriceLabel(product)}</p>
+  return <p className={className}><PriceLabel product={product} /></p>
 }

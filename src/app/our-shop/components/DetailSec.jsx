@@ -150,20 +150,34 @@ export default function NovaRedHero({ product }) {
             </span>
         ));
 
+    // Intro section of the product page: heading, paragraph, spec table and two
+    // images, all from the product (admin: "Intro"). Empty parts are not rendered.
+    const intro = product.pdp?.intro ?? {}
+    const left = product.sectionImages?.introLeft
+    const right = product.sectionImages?.introRight
+    const specs = intro.specs ?? []
+    const hasText = intro.heading || intro.text || specs.length > 0
+
     return (
         <section className="nova-section" ref={sectionRef}>
             <div className="container">
                 <div className="row">
                     {/* Left Column: Text Content */}
+                    {hasText && (
                     <div className="col-12 col-lg-4 col-md-6 nova-text-col">
+                        {intro.heading && (
                         <h2 className="sm-title" data-reveal>
-                            {splitWords(product.futureHeading)}
+                            {splitWords(intro.heading)}
                         </h2>
+                        )}
+                        {intro.text && (
                         <p className="desc"
                             ref={(el) => {
                                 if (el) paragraphRefs.current[0] = el;
                             }}
-                        >{product.detail1}</p>
+                        >{intro.text}</p>
+                        )}
+                        {specs.length > 0 && (
                         <div data-reveal>
                             <table className="nova-table">
                                 <thead>
@@ -181,69 +195,55 @@ export default function NovaRedHero({ product }) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
+                                    {specs.map((row, i) => (
+                                    <tr key={`${row.label}-${i}`}>
                                         <td
                                             ref={(el) => {
-                                                if (el) paragraphRefs.current[3] = el;
+                                                if (el) paragraphRefs.current[3 + i * 2] = el;
                                             }}
-                                        >Case Material</td>
+                                        >{row.label}</td>
                                         <td
                                             ref={(el) => {
-                                                if (el) paragraphRefs.current[4] = el;
+                                                if (el) paragraphRefs.current[4 + i * 2] = el;
                                             }}
-                                        >Titanium</td>
+                                        >{row.value}</td>
                                     </tr>
-                                    <tr>
-                                        <td
-                                            ref={(el) => {
-                                                if (el) paragraphRefs.current[5] = el;
-                                            }}
-                                        >Case Diameter</td>
-                                        <td
-                                            ref={(el) => {
-                                                if (el) paragraphRefs.current[6] = el;
-                                            }}
-                                        >40mm</td>
-                                    </tr>
-                                    <tr>
-                                        <td
-                                            ref={(el) => {
-                                                if (el) paragraphRefs.current[7] = el;
-                                            }}
-                                        >Case Thickness</td>
-                                        <td
-                                            ref={(el) => {
-                                                if (el) paragraphRefs.current[8] = el;
-                                            }}
-                                        >11.2mm</td>
-                                    </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
+                        )}
                     </div>
+                    )}
 
                     {/* Right Column: Watch Images */}
+                    {(left || right) && (
                     <div className="col-12 col-lg-8 col-md-6 nova-image-col" data-reveal>
                         <div className="row">
+                            {left && (
                             <div className="col-md-6">
                                 <img
                                     ref={imgRef}
-                                    src="/images/nova-sec-img-1.png"
-                                    alt="Nova Red Watch"
+                                    src={left}
+                                    alt={product.name}
                                     width={479}
                                     height={675}
                                 />
                             </div>
+                            )}
+                            {right && (
                             <div className="col-md-6">
                                 <img
                                     ref={imgRef2}
-                                    src="/images/nova-sec-img-2.png"
-                                    alt="Nova Red Watch Detail"
+                                    src={right}
+                                    alt={`${product.name}, detail`}
                                     className="watch-2"
                                 />
                             </div>
+                            )}
                         </div>
                     </div>
+                    )}
                 </div>
             </div>
         </section>

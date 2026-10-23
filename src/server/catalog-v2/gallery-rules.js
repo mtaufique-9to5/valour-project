@@ -73,11 +73,18 @@ export function removeImage({ mainImage, images }, path) {
   return { ...next, removedStorageKey: storageKeyOf(path) }
 }
 
+/** Every image path a product uses: main image, gallery and section images (additional_info.media). */
+export function productImagePaths(p) {
+  const media = p.additionalInfo && typeof p.additionalInfo === 'object' && !Array.isArray(p.additionalInfo) ? p.additionalInfo.media : null
+  const sectionPaths = media && typeof media === 'object' ? Object.values(media).filter((v) => typeof v === 'string') : []
+  return [p.mainImage, ...readGallery(p.images), ...sectionPaths].filter(Boolean)
+}
+
 /** Upload storage keys referenced by product rows (for the orphan clean-up script). */
 export function referencedStorageKeys(products) {
   const keys = new Set()
   for (const p of products) {
-    for (const path of [p.mainImage, ...readGallery(p.images)]) {
+    for (const path of productImagePaths(p)) {
       const key = storageKeyOf(path)
       if (key) keys.add(key)
     }

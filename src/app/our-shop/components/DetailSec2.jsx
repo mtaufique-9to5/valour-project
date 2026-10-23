@@ -110,73 +110,66 @@ export default function NovaRedHero({product}) {
 
 
 
+    // "Movement" section of the product page: heading, paragraph, spec table and
+    // image, all from the product (admin: "Movement"). Empty parts are not rendered.
+    const sec = product.pdp?.movement ?? {}
+    const specs = sec.specs ?? []
+    const image = product.sectionImages?.movement
+    const hasText = sec.heading || sec.text || specs.length > 0
+
     return (
         <section className="nova-section d-sec-2" ref={sectionRef}>
 
             <div className="container">
                 <div className="row">
                     {/* Left Column: Text Content */}
+                    {hasText && (
                     <div className="col-12 col-lg-6 col-md-6 nova-text-col">
+                        {sec.heading && (
                         <h2 className="sm-title" data-reveal>
-                            {splitWords("Movement")}
+                            {splitWords(sec.heading)}
                         </h2>
+                        )}
+                        {sec.text && (
                         <p className="desc"
                             ref={(el) => {
                                 if (el) paragraphRefs.current[0] = el;
                             }}
                         >
-                            abc ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+                            {sec.text}
                         </p>
+                        )}
+                        {specs.length > 0 && (
                         <div data-reveal>
                             <table className="nova-table">
-
                                 <tbody>
-                                    <tr>
+                                    {specs.map((row, i) => (
+                                    <tr key={`${row.label}-${i}`}>
                                         <td
                                             ref={(el) => {
-                                                if (el) paragraphRefs.current[1] = el;
+                                                if (el) paragraphRefs.current[1 + i * 2] = el;
                                             }}
-                                        >Movement </td>
+                                        >{row.label}</td>
                                         <td
                                             ref={(el) => {
-                                                if (el) paragraphRefs.current[2] = el;
+                                                if (el) paragraphRefs.current[2 + i * 2] = el;
                                             }}
-                                        >Automatic Mechanical</td>
+                                        >{row.value}</td>
                                     </tr>
-                                    <tr>
-                                        <td
-                                            ref={(el) => {
-                                                if (el) paragraphRefs.current[3] = el;
-                                            }}
-                                        >Power Reserve</td>
-                                        <td
-                                            ref={(el) => {
-                                                if (el) paragraphRefs.current[4] = el;
-                                            }}
-                                        >72 Hours</td>
-                                    </tr>
-                                    <tr>
-                                        <td
-                                            ref={(el) => {
-                                                if (el) paragraphRefs.current[5] = el;
-                                            }}
-                                        >Water Resistance</td>
-                                        <td
-                                            ref={(el) => {
-                                                if (el) paragraphRefs.current[6] = el;
-                                            }}
-                                        >100m / 10 ATM</td>
-                                    </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
+                        )}
                     </div>
+                    )}
 
                     {/* Right Column: Watch Images */}
+                    {image && (
                     <div className="col-12 col-lg-6 col-md-6">
-                       <div className="img-sec" style={{ backgroundImage: "url(/images/d-sec-2-img.jpg)" }}>
-                        </div>
+                        <div className="img-sec" role="img" aria-label={`${product.name}, Movement`} style={{ backgroundImage: `url("${image}")` }}></div>
                     </div>
+                    )}
                 </div>
             </div>
         </section>

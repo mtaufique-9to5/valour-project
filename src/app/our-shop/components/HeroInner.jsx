@@ -55,9 +55,12 @@ export default function RM7501Hero({product}) {
               <h1 className="big-title" data-reveal>
                 {splitWords(`${product.name}`)}
               </h1>
+              {/* Hero subtitle: per product (admin: Product page → Hero subtitle). */}
+              {product.pdp?.hero?.subtitle && (
               <p className="rm-subtitle" data-reveal>
-                {splitWords("Flying Tourbillon Sapphire")}
+                {splitWords(product.pdp.hero.subtitle)}
               </p>
+              )}
                <AddToCartButton product={product} className="theme-btn" />
             </div>
           </div>

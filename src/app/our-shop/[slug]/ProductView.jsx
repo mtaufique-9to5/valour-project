@@ -1,12 +1,8 @@
 "use client";
-import { notFound } from "next/navigation";
 import ProductDetail from "@/components/product/ProductDetail";
-import { getProductBySlug } from "@/data/catalog";
 
-// Resolves any product (watch or strap) from the unified catalog; ProductDetail
-// picks the layout from product.type.
-export default function ProductView({ slug }) {
-  const product = getProductBySlug(slug);
-  if (!product) notFound();
-  return <ProductDetail product={product} />;
+// Renders a product resolved on the server (database or static catalog);
+// ProductDetail picks the watch or strap layout.
+export default function ProductView({ product, related }) {
+  return <ProductDetail product={product} related={related} />;
 }
