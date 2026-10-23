@@ -1,6 +1,7 @@
 import {
   Boxes,
   FileText,
+  FolderTree,
   LayoutDashboard,
   Link2,
   Package,
@@ -9,6 +10,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   Tag,
+  Tags,
   UserCog,
   Users,
   Watch,
@@ -28,6 +30,8 @@ export const ADMIN_NAV = [
       { id: 'straps', label: 'Straps', path: '/products?type=STRAP', icon: Link2, permission: 'product.view' },
       { id: 'pricing', label: 'Pricing', path: '/pricing', icon: Tag, permission: 'product.view' },
       { id: 'inventory', label: 'Inventory', path: '/inventory', icon: Boxes, permission: 'product.view' },
+      { id: 'categories', label: 'Categories', path: '/categories', icon: FolderTree, permission: 'product.update' },
+      { id: 'brands', label: 'Brands', path: '/brands', icon: Tags, permission: 'product.update' },
     ],
   },
   {

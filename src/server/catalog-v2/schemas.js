@@ -1,7 +1,6 @@
 // Admin input validation for the approved catalog tables (pure, zod).
 import { z } from 'zod'
 import { parseAmountToMinor } from '../catalog/money.js'
-import { SKU_RE } from '../catalog/schemas.js'
 import { MAX_STOCK } from '../commerce/stock-rules.js'
 import { PRODUCT_STATUSES, PRODUCT_TYPES } from './product-rules.js'
 import { CATEGORY_TYPES } from './category-rules.js'
@@ -14,6 +13,8 @@ const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const name = (max) => z.string().trim().min(1, 'Required.').max(max)
 const optional = (max) => z.string().trim().max(max).optional().nullable().transform((v) => (v ? v : null))
 const slug = (max) => z.string().trim().toLowerCase().max(max).regex(SLUG_RE, 'Use lower-case letters, digits and hyphens.')
+// Empty or missing -> undefined: generated from the name on create, kept unchanged on update.
+const optionalSlug = (max) => z.preprocess((v) => (typeof v === 'string' && !v.trim() ? undefined : v), slug(max).optional())
 
 /** '525.00' -> 52500 (cents); rejects 0, negatives and malformed amounts. */
 const positiveAmount = z.string().trim().transform((v, ctx) => {
@@ -27,8 +28,8 @@ const positiveAmount = z.string().trim().transform((v, ctx) => {
 
 export const productCreateSchema = z.object({
   name: name(255),
-  sku: z.string().trim().toUpperCase().regex(SKU_RE, 'Use A-Z, 0-9 and hyphens (max 32).'),
-  slug: slug(255).optional(),
+  // No sku: generated on the server (auto-ids.js) and never changed afterwards.
+  slug: optionalSlug(255),
   type: z.enum(PRODUCT_TYPES),
   categoryId: idSchema.nullable().optional(),
   brandId: idSchema.nullable().optional(),
@@ -59,7 +60,7 @@ export const stockSchema = z.object({
 
 export const categorySchema = z.object({
   name: name(150),
-  slug: slug(180),
+  slug: optionalSlug(180),
   type: z.enum(CATEGORY_TYPES),
   parentId: idSchema.nullable().optional(),
   description: optional(5000),
@@ -68,6 +69,6 @@ export const categorySchema = z.object({
 
 export const brandSchema = z.object({
   name: name(150),
-  slug: slug(180),
+  slug: optionalSlug(180),
   description: optional(5000),
 }).strict()

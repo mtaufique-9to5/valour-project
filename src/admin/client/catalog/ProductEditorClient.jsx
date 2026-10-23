@@ -13,7 +13,7 @@ import { FormField, Input, Select, Textarea, Toggle } from '@/admin/components/F
 import ImageManager, { xhrUpload } from '@/admin/components/ImageManager'
 import useToasts from '@/admin/hooks/useToasts'
 import SectionImageField from './SectionImageField'
-import { MAX_STOCK, normalizeSku, parsePrice, validateSku } from './format'
+import { MAX_STOCK, parsePrice, validateSku } from './format'
 
 // Product editor for watchwebsite `products` (Revision 3), built from the
 // existing admin design components. New products are saved as drafts; prices,
@@ -134,7 +134,6 @@ function fromDisplayForm(d) {
 function toDetailsInput(v, { isNew }) {
   const out = {
     name: v.name.trim(),
-    sku: normalizeSku(v.sku),
     type: v.type,
     categoryId: v.categoryId || null,
     brandId: v.brandId || null,
@@ -157,8 +156,6 @@ function toDetailsInput(v, { isNew }) {
 function clientErrors(v, { isNew }) {
   const e = {}
   if (!v.name.trim()) e.name = 'Name is required.'
-  const sku = validateSku(v.sku)
-  if (sku) e.sku = sku
   if (v.slug.trim() && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v.slug.trim().toLowerCase())) e.slug = 'Use lower-case letters, digits and hyphens.'
   if (isNew) {
     const base = parsePrice(v.basePrice)
@@ -302,19 +299,19 @@ export default function ProductEditorClient({
               <FormField label="Name" required error={errors.name}>
                 <Input value={values.name} onChange={set('name')} maxLength={255} />
               </FormField>
-              <FormField label="SKU" required error={errors.sku} hint="A–Z, 0–9 and hyphens. Must be unique.">
-                <Input value={values.sku} onChange={set('sku')} maxLength={32} className="va-mono" />
+              <FormField label="SKU" hint={isNew ? 'Assigned automatically when the product is created (VAL-W-… for watches, VAL-S-… for straps).' : 'Assigned automatically; cannot be changed.'}>
+                <Input value={isNew ? '' : values.sku} placeholder={isNew ? 'Generated on save' : undefined} readOnly disabled={isNew} className="va-mono" />
               </FormField>
               <FormField label="Type" required error={errors.type} hint={typeLocked ? 'Fixed once published or ordered.' : undefined}>
                 <Select value={values.type} onChange={set('type')} options={TYPE_OPTIONS} disabled={typeLocked} />
               </FormField>
-              <FormField label="URL slug" error={errors.slug} hint={isNew ? 'Leave empty to create one from the name and SKU.' : 'Changing it changes the product URL.'}>
+              <FormField label="URL slug" error={errors.slug} hint={isNew ? 'Leave empty to create one from the name.' : 'Changing it changes the product URL. Renaming the product keeps the slug.'}>
                 <Input value={values.slug} onChange={set('slug')} maxLength={255} className="va-mono" />
               </FormField>
-              <FormField label="Category" error={errors.categoryId} hint={categories.length ? undefined : 'No categories yet (managed in a later phase).'}>
+              <FormField label="Category" error={errors.categoryId} hint={categories.length ? undefined : 'No product categories yet. Add them under Catalog → Categories.'}>
                 <Select value={values.categoryId} onChange={set('categoryId')} options={[{ value: '', label: 'None' }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />
               </FormField>
-              <FormField label="Brand" error={errors.brandId} hint={brands.length ? undefined : 'No brands yet (managed in a later phase).'}>
+              <FormField label="Brand" error={errors.brandId} hint={brands.length ? undefined : 'No brands yet. Add them under Catalog → Brands.'}>
                 <Select value={values.brandId} onChange={set('brandId')} options={[{ value: '', label: 'None' }, ...brands.map((b) => ({ value: b.id, label: b.name }))]} />
               </FormField>
               <div className="va-span-full">

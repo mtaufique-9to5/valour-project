@@ -72,14 +72,47 @@ export async function listAllProducts(db) {
   return rows.map(toListRow)
 }
 
+// Product editor dropdowns: every non-deleted product category / brand. Inactive
+// ones stay selectable (so existing assignments keep loading and saving) and are marked.
 export async function listCategoryOptions(db) {
-  const rows = await db.category.findMany({ where: { deletedAt: null, type: 'product' }, select: { id: true, name: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] })
-  return rows.map((c) => ({ id: String(c.id), name: c.name }))
+  const rows = await db.category.findMany({ where: { deletedAt: null, type: 'product' }, select: { id: true, name: true, status: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] })
+  return rows.map((c) => ({ id: String(c.id), name: c.status ? c.name : `${c.name} (inactive)` }))
 }
 
 export async function listBrandOptions(db) {
-  const rows = await db.brand.findMany({ where: { deletedAt: null }, select: { id: true, name: true }, orderBy: { name: 'asc' } })
-  return rows.map((b) => ({ id: String(b.id), name: b.name }))
+  const rows = await db.brand.findMany({ where: { deletedAt: null }, select: { id: true, name: true, status: true }, orderBy: { name: 'asc' } })
+  return rows.map((b) => ({ id: String(b.id), name: b.status ? b.name : `${b.name} (inactive)` }))
+}
+
+/** Categories page: every non-deleted category with its parent and usage counts. */
+export async function listCategoriesAdmin(db) {
+  const rows = await db.category.findMany({
+    where: { deletedAt: null },
+    orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+    select: {
+      id: true, name: true, slug: true, type: true, description: true, status: true, sortOrder: true, parentId: true, updatedAt: true,
+      parent: { select: { name: true } },
+      _count: { select: { products: { where: { deletedAt: null } }, children: { where: { deletedAt: null } }, blogs: { where: { deletedAt: null } } } },
+    },
+  })
+  return rows.map((c) => ({
+    id: String(c.id), name: c.name, slug: c.slug, type: c.type, description: c.description ?? '', active: c.status,
+    sortOrder: c.sortOrder, parentId: c.parentId == null ? '' : String(c.parentId), parentName: c.parent?.name ?? null,
+    products: c._count.products, children: c._count.children, blogs: c._count.blogs, updatedAt: c.updatedAt.toISOString(),
+  }))
+}
+
+/** Brands page: every non-deleted brand with its product count. */
+export async function listBrandsAdmin(db) {
+  const rows = await db.brand.findMany({
+    where: { deletedAt: null },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true, slug: true, description: true, status: true, updatedAt: true, _count: { select: { products: { where: { deletedAt: null } } } } },
+  })
+  return rows.map((b) => ({
+    id: String(b.id), name: b.name, slug: b.slug, description: b.description ?? '', active: b.status,
+    products: b._count.products, updatedAt: b.updatedAt.toISOString(),
+  }))
 }
 
 /** Image list in ImageManager's shape: the path is the id (no image table in Revision 3). */

@@ -513,3 +513,13 @@
 
 /* Small centred note under auth forms (forgot password, back to sign in). */
 .va-auth-footnote { margin: 12px 0 0; text-align: center; font-size: 13px; }
+
+/* Page loading state (src/admin/components/AdminLoading.jsx): centred in the page
+   area; fades in after 150ms so quick navigations show nothing. */
+.va-page-loading {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  min-height: 50vh; color: var(--va-text-muted); font-size: 14px; letter-spacing: 0.02em;
+  opacity: 0; animation: va-loading-in 0.2s ease-out 0.15s forwards;
+}
+.va-page-loading svg { color: var(--va-gold); }
+@keyframes va-loading-in { to { opacity: 1; } }

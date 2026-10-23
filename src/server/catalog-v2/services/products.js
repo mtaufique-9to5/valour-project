@@ -8,7 +8,8 @@ import { CommerceError } from '../../commerce/errors.js'
 import { toAmount, toMinor } from '../../commerce/money.js'
 import { setStock } from '../../commerce/services/stock.js'
 import { categoryUseError } from '../category-rules.js'
-import { priceProblems, slugFor, statusChangeError, typeChangeError } from '../product-rules.js'
+import { priceProblems, statusChangeError, typeChangeError } from '../product-rules.js'
+import { autoConflict, duplicateField, generateSlug, nextSku } from '../auto-ids.js'
 
 const audit = (tx, actor, action, id, before, after) =>
   recordAudit(tx, { ...actor, action, targetType: 'product', targetId: String(id), before, after })
@@ -42,15 +43,20 @@ const uniqueError = (e) => {
   return e
 }
 
-/** input: productCreateSchema output (prices in cents). Always created as draft. */
+/**
+ * input: productCreateSchema output (prices in cents). Always created as draft.
+ * The SKU (VAL-W-0001 / VAL-S-0001, per type) and, when left empty, the slug are
+ * generated here; a parallel create taking the same value gives auto_conflict,
+ * and the caller re-runs the transaction (auto-ids.js withAutoRetry).
+ */
 export async function createProduct(tx, input, actor) {
   const problems = priceProblems(input.basePrice, input.salePrice ?? null)
   if (problems.length) throw new CommerceError('invalid_price', problems.join(' '))
   await assertRefs(tx, input)
   const data = {
     name: input.name,
-    sku: input.sku,
-    slug: input.slug ?? slugFor(input.name, input.sku),
+    sku: await nextSku(tx, input.type),
+    slug: input.slug ?? await generateSlug(tx, 'product', input.name, { max: 255 }),
     type: input.type,
     categoryId: input.categoryId ?? null,
     brandId: input.brandId ?? null,
@@ -70,6 +76,8 @@ export async function createProduct(tx, input, actor) {
   try {
     created = await tx.product.create({ data, select: { id: true } })
   } catch (e) {
+    const field = duplicateField(e)
+    if (field === 'sku' || (field === 'slug' && input.slug == null)) throw autoConflict()
     throw uniqueError(e)
   }
   await audit(tx, actor, 'product.create', created.id, null, data)
@@ -78,6 +86,8 @@ export async function createProduct(tx, input, actor) {
 
 /** input: productUpdateSchema output. Prices, stock and status have their own functions. */
 export async function updateProduct(tx, id, input, actor) {
+  // A SKU is fixed once assigned (also when the type changes).
+  if ('sku' in input) throw new CommerceError('sku_locked', 'The SKU cannot be changed.')
   const p = await lockProduct(tx, id)
   if (p.deletedAt) throw new CommerceError('product_not_found', 'Product not found.')
   if (input.type !== undefined) {

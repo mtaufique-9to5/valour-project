@@ -1,13 +1,20 @@
 // Category and brand writes on the approved tables. Each function takes the
-// transaction `tx` and records an audit entry in it.
-// TARGET SCHEMA ONLY: not imported by any route until the replacement migration.
+// transaction `tx` and records an audit entry in it. Used by the admin
+// Categories and Brands pages (src/app/admin/(panel)/taxonomy-actions.js).
 import 'server-only'
 import { recordAudit } from '../../audit/audit.js'
 import { CommerceError } from '../../commerce/errors.js'
 import { MAX_DEPTH, deleteError, parentError } from '../category-rules.js'
+import { autoConflict, duplicateField, generateSlug } from '../auto-ids.js'
 
 const audit = (tx, actor, action, type, id, before, after) =>
   recordAudit(tx, { ...actor, action, targetType: type, targetId: String(id), before, after })
+
+// An empty slug is generated from the name (create) or left unchanged (update).
+// A parallel create taking the same generated slug gives auto_conflict and the
+// caller re-runs the transaction (auto-ids.js withAutoRetry).
+const createError = (e, auto, what) =>
+  (auto && duplicateField(e) === 'slug' ? autoConflict() : slugTaken(e, what))
 
 const slugTaken = (e, what) =>
   e?.code === 'P2002' ? new CommerceError('duplicate', `This ${what} is already used (including deleted entries).`) : e
@@ -47,11 +54,13 @@ async function checkParent(tx, category, parentId) {
 /** Created inactive (status FALSE); activation is a separate explicit action. */
 export async function createCategory(tx, input, actor) {
   await checkParent(tx, { id: null, type: input.type, subtreeHeight: 1 }, input.parentId ?? null)
+  const auto = input.slug == null
+  if (auto) input = { ...input, slug: await generateSlug(tx, 'category', input.name) }
   let row
   try {
     row = await tx.category.create({ data: { ...input, parentId: input.parentId ?? null, status: false }, select: { id: true } })
   } catch (e) {
-    throw slugTaken(e, 'slug')
+    throw createError(e, auto, 'slug')
   }
   await audit(tx, actor, 'category.create', 'category', row.id, null, input)
   return row.id
@@ -97,13 +106,15 @@ export async function softDeleteCategory(tx, id, actor) {
   await audit(tx, actor, 'category.delete', 'category', c.id, null, { deleted: true })
 }
 
-/** Brands: created inactive; soft delete blocked while active products use the brand. */
+/** Brands: created inactive; soft delete blocked while any product still uses the brand. */
 export async function createBrand(tx, input, actor) {
+  const auto = input.slug == null
+  if (auto) input = { ...input, slug: await generateSlug(tx, 'brand', input.name) }
   let row
   try {
     row = await tx.brand.create({ data: { ...input, status: false }, select: { id: true } })
   } catch (e) {
-    throw slugTaken(e, 'name or slug')
+    throw createError(e, auto, 'name or slug')
   }
   await audit(tx, actor, 'brand.create', 'brand', row.id, null, input)
   return row.id
@@ -130,8 +141,10 @@ export async function setBrandStatus(tx, id, status, actor) {
 export async function softDeleteBrand(tx, id, actor) {
   const [b] = await tx.$queryRaw`SELECT id, deleted_at AS deletedAt FROM brands WHERE id = ${BigInt(id)} FOR UPDATE`
   if (!b || b.deletedAt) throw new CommerceError('not_found', 'Brand not found.')
-  const active = await tx.product.count({ where: { brandId: b.id, status: 'active', deletedAt: null } })
-  if (active > 0) throw new CommerceError('in_use', 'Deactivate or move this brand’s active products first.')
+  // Any non-deleted product (draft and archived too): otherwise those products would
+  // point at a deleted brand and could no longer be saved in the editor.
+  const used = await tx.product.count({ where: { brandId: b.id, deletedAt: null } })
+  if (used > 0) throw new CommerceError('in_use', `Move this brand’s ${used} product(s) to another brand first.`)
   await tx.brand.update({ where: { id: b.id }, data: { deletedAt: new Date(), status: false } })
   await audit(tx, actor, 'brand.delete', 'brand', b.id, null, { deleted: true })
 }

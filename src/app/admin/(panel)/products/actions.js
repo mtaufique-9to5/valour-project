@@ -10,6 +10,7 @@ import { getAdminSession } from '@/server/auth/guards'
 import { isCommerceError } from '@/server/commerce/errors'
 import { productCreateSchema, productUpdateSchema, priceSchema, stockSchema, idSchema } from '@/server/catalog-v2/schemas'
 import { displayInfoSchema, mergeDisplayInfo } from '@/server/catalog-v2/display-info'
+import { withAutoRetry } from '@/server/catalog-v2/auto-ids'
 import { createProduct, updateProduct, setPrices, setStatus, setInventory } from '@/server/catalog-v2/services/products'
 import { detachImage, makeMainImage, reorderGallery, setSectionImage } from '@/server/catalog-v2/services/images'
 import { removeProductImage } from '@/server/catalog/storage'
@@ -26,7 +27,8 @@ async function run(fn, { paths = PATHS, after } = {}) {
   if (!session) return { ok: false, error: 'Your session has ended. Please sign in again.' }
   const actor = { actorType: 'ADMIN', actorId: session.user.id, actorLabel: session.user.email }
   try {
-    const value = await db.$transaction((tx) => fn(tx, actor), { timeout: 15_000 })
+    // A fresh transaction per attempt: retried only after an auto slug/SKU collision or a deadlock.
+    const value = await withAutoRetry(() => db.$transaction((tx) => fn(tx, actor), { timeout: 15_000 }))
     if (after) await after(value)
     for (const p of paths) revalidatePath(p)
     revalidateCatalog()

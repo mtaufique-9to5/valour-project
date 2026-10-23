@@ -75,10 +75,11 @@ describe('admin rows for the existing views', () => {
 })
 
 describe('editor input validation (server schemas)', () => {
-  const base = { name: 'Nova Red', sku: 'luc-02', type: 'watch', basePrice: '525.00', trackStock: false, stock: 0, isFeatured: false }
+  const base = { name: 'Nova Red', type: 'watch', basePrice: '525.00', trackStock: false, stock: 0, isFeatured: false }
   test('create: draft-only fields, prices in cents, no status or price-on-request', () => {
     const r = productCreateSchema.parse({ ...base, salePrice: '499.99', categoryId: null, brandId: null, shortDescription: '', metaTitle: '' })
-    assert.equal(r.sku, 'LUC-02')
+    assert.equal(r.sku, undefined)
+    assert.equal(productCreateSchema.safeParse({ ...base, sku: 'LUC-02' }).success, false, 'SKU is generated, never sent')
     assert.equal(r.basePrice, 52500)
     assert.equal(r.salePrice, 49999)
     assert.equal(r.shortDescription, null)
@@ -92,7 +93,7 @@ describe('editor input validation (server schemas)', () => {
   test('update: prices, stock and status cannot be changed through the details form', () => {
     const update = productUpdateSchema.omit({ additionalInfo: true })
     assert.ok(update.safeParse({ name: 'X' }).success)
-    for (const extra of [{ basePrice: '1.00' }, { stock: 3 }, { trackStock: true }, { status: 'active' }]) {
+    for (const extra of [{ basePrice: '1.00' }, { stock: 3 }, { trackStock: true }, { status: 'active' }, { sku: 'VAL-W-0009' }]) {
       assert.equal(update.safeParse({ name: 'X', ...extra }).success, false, JSON.stringify(extra))
     }
   })

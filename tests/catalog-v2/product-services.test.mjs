@@ -21,6 +21,7 @@ function productTx(row, models = {}) {
       product: {
         update: ({ data }) => { state.updates.push(data); Object.assign(state.row, data); return state.row },
         create: ({ data }) => { state.created = data; return { id: 8n } },
+        findMany: () => [],
         ...models.product,
       },
       orderItem: { count: () => 0 },
@@ -36,20 +37,24 @@ describe('product service', () => {
   test('create: always draft; prices stored as decimals; display details stored in additional_info', async () => {
     const { tx, state } = productTx()
     await quiet(() => createProduct(tx, {
-      name: 'Nova Red', sku: 'LUC-02', type: 'watch', basePrice: 52500, salePrice: 49999, trackStock: false, stock: 4,
+      name: 'Nova Red', type: 'watch', basePrice: 52500, salePrice: 49999, trackStock: false, stock: 4,
       isFeatured: false, additionalInfo: { subtitle: 'Lucent Collection' },
     }, ACTOR))
     assert.equal(state.created.status, 'draft')
     assert.equal(state.created.basePrice, '525.00')
     assert.equal(state.created.salePrice, '499.99')
     assert.equal(state.created.stock, 0, 'untracked products keep stock 0')
-    assert.equal(state.created.slug, 'nova-red-luc-02')
+    assert.equal(state.created.slug, 'nova-red')
+    assert.equal(state.created.sku, 'VAL-W-0001')
     assert.deepEqual(state.created.additionalInfo, { subtitle: 'Lucent Collection' })
-    await rejects(createProduct(tx, { name: 'X', sku: 'X', type: 'watch', basePrice: 100, salePrice: 200, trackStock: false, stock: 0 }, ACTOR), 'invalid_price')
+    await rejects(createProduct(tx, { name: 'X', type: 'watch', basePrice: 100, salePrice: 200, trackStock: false, stock: 0 }, ACTOR), 'invalid_price')
   })
-  test('create/update: duplicate SKU or slug gives a clear message', async () => {
+  test('create/update: duplicate slug gives a clear message; a generated value colliding is retryable', async () => {
     const dup = (field) => () => { const e = new Error('dup'); e.code = 'P2002'; e.meta = { target: [field] }; throw e }
-    await rejects(createProduct(productTx({}, { product: { create: dup('sku') } }).tx, { name: 'X', sku: 'X', type: 'watch', basePrice: 100, trackStock: false, stock: 0 }, ACTOR), 'duplicate_sku')
+    const input = { name: 'X', type: 'watch', basePrice: 100, trackStock: false, stock: 0 }
+    await rejects(createProduct(productTx({}, { product: { create: dup('sku') } }).tx, input, ACTOR), 'auto_conflict')
+    await rejects(createProduct(productTx({}, { product: { create: dup('slug') } }).tx, input, ACTOR), 'auto_conflict')
+    await rejects(createProduct(productTx({}, { product: { create: dup('slug') } }).tx, { ...input, slug: 'taken' }, ACTOR), 'duplicate_slug')
     await rejects(quiet(() => updateProduct(productTx({}, { product: { update: dup('slug') } }).tx, 7n, { slug: 'taken' }, ACTOR)), 'duplicate_slug')
   })
   test('publishing needs a main image and a valid price; archive and restore follow the status rules', async () => {
